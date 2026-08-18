@@ -1,0 +1,42 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/app/dist/
+/rules/dist/
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Claude Code temporary files
+tmpclaude-*
+
+# Yarn v2+/Berry
+.yarn/*
+!.yarn/cache
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# IntelliJ IDEA
+/.idea
+*.iml
+
+# Visual Studio Code
+.vscode

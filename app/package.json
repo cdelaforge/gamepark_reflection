@@ -1,0 +1,52 @@
+{
+  "name": "@gamepark/game-template-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "The user interface of Game Template adaptation for Game Park",
+  "author": "Romain Fromi <romain@game-park.com> (https://game-park.com/)",
+  "license": "ISC",
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "upload-sourcemaps": "datadog-ci sourcemaps upload dist/assets --service=game-template --release-version=$npm_package_version --minified-path-prefix=/assets/",
+    "sync": "npx rimraf dist/assets/*.map && rclone sync dist game-template:game-template.game-park.com --progress --s3-acl=public-read",
+    "deploy": "yarn build && node -e \"if(process.env.DATADOG_API_KEY){require('child_process').execSync('yarn upload-sourcemaps',{stdio:'inherit'})}\" && yarn sync"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "~6.3.1",
+    "@emotion/react": "^11.14.0",
+    "@fortawesome/fontawesome-svg-core": "^7.3.1",
+    "@fortawesome/free-regular-svg-icons": "^7.3.1",
+    "@fortawesome/free-solid-svg-icons": "^7.3.1",
+    "@fortawesome/react-fontawesome": "^3.5.0",
+    "@gamepark/react-game": "~7.7.46",
+    "@gamepark/rules-api": "~7.7.2",
+    "es-toolkit": "^1.50.0",
+    "i18next": "^26.3.6",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-i18next": "^17.0.11",
+    "react-redux": "^9.3.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "@vitejs/plugin-react-swc": "^4.3.3",
+    "eslint": "^10.8.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.4",
+    "globals": "^17.11.0",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.67.0",
+    "vite": "^8.2.1",
+    "vite-imagetools": "^12.0.0",
+    "vitest": "^4.1.10"
+  }
+}
