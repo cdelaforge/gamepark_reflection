@@ -1,7 +1,7 @@
-import { RuleId } from '@gamepark/game-template/rules/RuleId'
+import { RuleId } from '@gamepark/reflection/rules/RuleId'
 import { ComponentType } from 'react'
-import { TheFirstStepHeader } from './TheFirstStepHeader'
+import { SolvePuzzleHeader } from './SolvePuzzleHeader'
 
 export const Headers: Partial<Record<RuleId, ComponentType>> = {
-  [RuleId.TheFirstStep]: TheFirstStepHeader
+  [RuleId.SolvePuzzle]: SolvePuzzleHeader
 }

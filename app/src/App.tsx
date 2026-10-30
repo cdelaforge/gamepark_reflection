@@ -1,6 +1,7 @@
-import { FailuresDialog, FullscreenDialog, LoadingScreen, MaterialGameSounds, MaterialHeader, MaterialImageLoader, Menu, useGame } from '@gamepark/react-game'
+import { FailuresDialog, LoadingScreen, MaterialGameSounds, MaterialHeader, MaterialImageLoader, Menu, useGame } from '@gamepark/react-game'
 import { MaterialGame } from '@gamepark/rules-api'
 import { useEffect, useState } from 'react'
+import { RoundResultsDialog } from './dialogs/RoundResultsDialog'
 import { GameDisplay } from './GameDisplay'
 import { Headers } from './headers/Headers'
 
@@ -21,7 +22,7 @@ export function App() {
       <MaterialGameSounds />
       <Menu />
       <FailuresDialog />
-      <FullscreenDialog />
+      {!loading && <RoundResultsDialog />}
     </>
   )
 }

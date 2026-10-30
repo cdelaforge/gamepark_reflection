@@ -1,7 +1,7 @@
 {
-  "name": "@gamepark/game-template",
+  "name": "@gamepark/reflection",
   "version": "0.0.0",
-  "description": "The rules of Game Template adapted for Game Park",
+  "description": "The rules of Reflection adapted for Game Park",
   "sideEffects": false,
   "type": "module",
   "main": "dist/index.js",
@@ -26,7 +26,7 @@
     "es-toolkit": "^1.45.1"
   },
   "devDependencies": {
-    "@gamepark/rules-api": "~7.7.2",
+    "@gamepark/rules-api": "~7.10.0",
     "es-toolkit": "^1.50.0",
     "vitest": "^4.1.10"
   }

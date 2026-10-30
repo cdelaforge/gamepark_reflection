@@ -1,4 +1,4 @@
-# Game Park - Board Game Template
+# Reflection - Game Park
 
 Template to adapt board games for [Game Park](https://game-park.com/).
 

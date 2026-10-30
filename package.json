@@ -19,13 +19,13 @@
     "vitest": "^4.1.10"
   },
   "scripts": {
-    "dev": "yarn workspace @gamepark/game-template-app run dev",
-    "test": "yarn workspace @gamepark/game-template run test && yarn workspace @gamepark/game-template-app run test",
-    "preview": "yarn workspace @gamepark/game-template-app run preview",
-    "build": "yarn workspace @gamepark/game-template-app run build",
-    "deploy": "yarn workspace @gamepark/game-template-app run deploy",
-    "publish": "yarn workspace @gamepark/game-template run publish",
-    "lint": "yarn workspace @gamepark/game-template run lint && yarn workspace @gamepark/game-template-app run lint",
+    "dev": "yarn workspace @gamepark/reflection-app run dev",
+    "test": "yarn workspace @gamepark/reflection run test && yarn workspace @gamepark/reflection-app run test",
+    "preview": "yarn workspace @gamepark/reflection-app run preview",
+    "build": "yarn workspace @gamepark/reflection-app run build",
+    "deploy": "yarn workspace @gamepark/reflection-app run deploy",
+    "publish": "yarn workspace @gamepark/reflection run publish",
+    "lint": "yarn workspace @gamepark/reflection run lint && yarn workspace @gamepark/reflection-app run lint",
     "linkgp": "yarn link ../rules-api ../react-client ../react-game -r && git update-index --skip-worktree package.json yarn.lock",
     "unlinkgp": "git update-index --no-skip-worktree package.json yarn.lock && yarn unlink ../react-game ../react-client ../rules-api"
   },

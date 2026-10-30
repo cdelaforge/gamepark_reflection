@@ -1,3 +1,3 @@
-export { GameTemplateRules } from './GameTemplateRules'
-export { GameTemplateOptionsSpecV2 } from './GameTemplateOptions'
-export { GameTemplateSetup } from './GameTemplateSetup'
+export { ReflectionRules } from './ReflectionRules'
+export { ReflectionOptionsSpecV2 } from './ReflectionOptions'
+export { ReflectionSetup } from './ReflectionSetup'

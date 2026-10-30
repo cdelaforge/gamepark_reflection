@@ -1,9 +1,9 @@
 {
-  "name": "@gamepark/game-template-app",
+  "name": "@gamepark/reflection-app",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "The user interface of Game Template adaptation for Game Park",
+  "description": "The user interface of Reflection adaptation for Game Park",
   "author": "Romain Fromi <romain@game-park.com> (https://game-park.com/)",
   "license": "ISC",
   "scripts": {
@@ -12,8 +12,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "upload-sourcemaps": "datadog-ci sourcemaps upload dist/assets --service=game-template --release-version=$npm_package_version --minified-path-prefix=/assets/",
-    "sync": "npx rimraf dist/assets/*.map && rclone sync dist game-template:game-template.game-park.com --progress --s3-acl=public-read",
+    "upload-sourcemaps": "datadog-ci sourcemaps upload dist/assets --service=reflection --release-version=$npm_package_version --minified-path-prefix=/assets/",
+    "sync": "npx rimraf dist/assets/*.map && rclone sync dist reflection:reflection.game-park.com --progress --s3-acl=public-read",
     "deploy": "yarn build && node -e \"if(process.env.DATADOG_API_KEY){require('child_process').execSync('yarn upload-sourcemaps',{stdio:'inherit'})}\" && yarn sync"
   },
   "dependencies": {
@@ -23,8 +23,8 @@
     "@fortawesome/free-regular-svg-icons": "^7.3.1",
     "@fortawesome/free-solid-svg-icons": "^7.3.1",
     "@fortawesome/react-fontawesome": "^3.5.0",
-    "@gamepark/react-game": "~7.7.46",
-    "@gamepark/rules-api": "~7.7.2",
+    "@gamepark/react-game": "~7.9.5",
+    "@gamepark/rules-api": "~7.10.0",
     "es-toolkit": "^1.50.0",
     "i18next": "^26.3.6",
     "react": "^19.2.8",
