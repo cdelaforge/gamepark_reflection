@@ -18,7 +18,7 @@ export const cellCoordinates = (x: number, y: number, gridSize: number) => ({
 })
 
 /**
- * The stock is beside the grid on a landscape screen, below it on a portrait screen
+ * The stock is beside the grid on a landscape screen, above or below it on a portrait screen
  */
 const portraitQuery = window.matchMedia('(max-aspect-ratio: 1/1)')
 
@@ -29,6 +29,18 @@ export const usePortrait = () =>
     portraitQuery.addEventListener('change', listener)
     return () => portraitQuery.removeEventListener('change', listener)
   }, isPortrait)
+
+/**
+ * Renders again when the window is resized
+ */
+export const useWindowSize = () =>
+  useSyncExternalStore(
+    listener => {
+      window.addEventListener('resize', listener)
+      return () => window.removeEventListener('resize', listener)
+    },
+    () => `${innerWidth}x${innerHeight}`
+  )
 
 /**
  * Space between the centers of 2 piles of the stock, in cells

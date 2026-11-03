@@ -190,6 +190,18 @@ Three things do **not** belong in it:
 Read `features/game-options.md` before changing this file — the shape is precise and the platform
 depends on it. Never reintroduce a v1 `OptionsSpec`.
 
+## Game Park default style
+
+Never restyle the framework's own components (player panels, header, menu, dialogs, buttons…): their default look is the
+platform's wanted style, and overriding their inner structure breaks with future versions. Customize only through the
+official extension points (theme, component props) and style our own components and containers. When a framework
+component does not fit, adapt how we use it (props, position, layout) or ask Game Park for an option.
+
+Accepted exceptions, decided with the developer:
+- Header in portrait only (theme `header.bar` under `max-aspect-ratio: 1/1`): wrapped title and padding, so the sentence
+  and its buttons stay readable. Landscape keeps the default header.
+- Grid cells and stock piles: the default shine, hover and drop highlight are disabled, the game requires it.
+
 ## When Helping
 
 1. **Always read existing code first** before suggesting changes

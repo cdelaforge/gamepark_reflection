@@ -1,10 +1,14 @@
 import { css } from '@emotion/react'
+import { faLock, IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { Element } from '@gamepark/reflection/material/Element'
+import { PlayerColor } from '@gamepark/reflection/PlayerColor'
+import { Memory } from '@gamepark/reflection/rules/Memory'
 import { PlayerPuzzleHelper } from '@gamepark/reflection/rules/PlayerPuzzleHelper'
+import { Lock } from '@gamepark/reflection/rules/SolvePuzzleRule'
 import { LocationType } from '@gamepark/reflection/material/LocationType'
 import { MaterialType } from '@gamepark/reflection/material/MaterialType'
 import { ItemContext, MaterialDescription, TokenDescription } from '@gamepark/react-game'
-import { MaterialItem, MaterialMove } from '@gamepark/rules-api'
+import { MaterialItem, MaterialMove, MaterialRules } from '@gamepark/rules-api'
 import backslash from '../images/backslash.svg?no-inline'
 import blackHole from '../images/black-hole.svg?no-inline'
 import horizontal from '../images/horizontal.svg?no-inline'
@@ -45,9 +49,9 @@ class MirrorDescription extends TokenDescription {
     return false
   }
 
-  // A dragged element is slightly transparent, without the selection outline
+  // A dragged element is slightly transparent, without the selection outline. An element on a locked cell shows the padlock.
   getItemExtraCss(item: MaterialItem, context: ItemContext) {
-    return [noTransitionCss, context.isDragging ? draggingCss : item.selected && selectedCss]
+    return [noTransitionCss, context.isDragging ? draggingCss : item.selected && selectedCss, isOnLockedCell(item, context) && lockedCss]
   }
 
   // An element goes back to the stock without a pile id: the piles accept it, the framework must not add a pile for this location
@@ -64,10 +68,10 @@ class MirrorDescription extends TokenDescription {
    * A click on an element of the grid sends it back to the stock
    */
   getShortClickMove(context: ItemContext) {
-    const mirror = context.rules.material(MaterialType.Mirror).index(context.index)
-    const item = mirror.getItem()!
-    if (item.location.type !== LocationType.PlayerGrid || !canPlay(context)) return
-    return mirror.moveItem({ type: LocationType.PlayerStock, player: item.location.player })
+    const mirrors = context.rules.material(MaterialType.Mirror)
+    const item = mirrors.getItem(context.index)
+    if (item.location.type !== LocationType.PlayerGrid || !canPlay(context) || isOnLockedCell(item, context)) return
+    return mirrors.index(context.index).moveItem({ type: LocationType.PlayerStock, player: item.location.player })
   }
 
   /**
@@ -84,6 +88,43 @@ class MirrorDescription extends TokenDescription {
  */
 const canPlay = ({ rules, player }: ItemContext) =>
   player !== undefined && rules.isTurnToPlay(player) && new PlayerPuzzleHelper(rules.game, player).hasStarted
+
+/**
+ * The cells locked by the player, see SolvePuzzleRule
+ */
+export const isLocked = (rules: MaterialRules, player: PlayerColor, x: number, y: number) =>
+  !!rules.remind<Lock[] | undefined>(Memory.Locks, player)?.some(lock => lock.x === x && lock.y === y)
+
+const isOnLockedCell = ({ location }: MaterialItem, { rules }: ItemContext) =>
+  location.type === LocationType.PlayerGrid && isLocked(rules, location.player!, location.x!, location.y!)
+
+/**
+ * A FontAwesome icon as an image url
+ */
+export const iconUrl = ({ icon: [width, height, , , path] }: IconDefinition, color: string) =>
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><path fill="${color}" d="${path}"/></svg>`)}`
+
+const lockIcon = iconUrl(faLock, '#ffd700')
+
+/**
+ * The padlock in the corner of a locked cell, over its element if any
+ */
+export const lockCss = css`
+  position: absolute;
+  top: 4%;
+  right: 4%;
+  width: 28%;
+  height: 28%;
+  background: url("${lockIcon}") no-repeat center / contain;
+  filter: drop-shadow(0 0 0.05em #000);
+`
+
+const lockedCss = css`
+  &:after {
+    content: '';
+    ${lockCss};
+  }
+`
 
 const selectedCss = css`
   outline: 0.2em solid #ffd700;

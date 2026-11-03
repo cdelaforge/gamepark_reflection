@@ -9,5 +9,6 @@ export enum Memory {
   TotalDuration,
   RoundResults,
   Challenge,
-  Hearts
+  Hearts,
+  Locks
 }

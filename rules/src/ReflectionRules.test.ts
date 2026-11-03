@@ -133,6 +133,25 @@ describe('Reflection rules', () => {
     expect(rules.getTieBreaker(1, PlayerColor.Red)).toBe(-600)
   })
 
+  test('a locked cell keeps its element and refuses any other one, until it is unlocked', () => {
+    const rules = new ReflectionRules(newGame())
+    at('10:00:00')
+    play(rules, PlayerColor.Blue)
+    play(rules, PlayerColor.Blue, solutionMoves(rules)[0])
+    const slash = rules.material(MaterialType.Mirror).location(LocationType.PlayerGrid).getIndex()
+    const lock = (x: number, y: number) => rules.play(rules.customMove(CustomMoveType.Lock, { player: PlayerColor.Blue, x, y }), { local: true })
+    const moves = (predicate: (move: Move) => boolean) => rules.getLegalMoves(PlayerColor.Blue).filter(move => isMoveItem(move) && predicate(move))
+    const toCell = (x: number, y: number) => moves(move => isMoveItem(move) && move.location.type === LocationType.PlayerGrid && move.location.x === x && move.location.y === y)
+
+    lock(1, 0)
+    lock(3, 3)
+    expect(moves(move => isMoveItem(move) && move.itemIndex === slash)).toEqual([])
+    expect(toCell(1, 0)).toEqual([])
+    expect(toCell(3, 3)).toEqual([])
+    lock(3, 3)
+    expect(toCell(3, 3)).not.toEqual([])
+  })
+
   test('the random bot replacing an ejected player gives up with its first action', () => {
     const rules = new ReflectionRules(newGame())
     at('10:00:00')
@@ -336,7 +355,7 @@ describe('Reflection rules', () => {
     expect(rules.material(MaterialType.Mirror).selected().length).toBe(0)
   })
 
-  test('an element dropped on an occupied cell swaps places with its element', () => {
+  test('an element dropped on an occupied cell sends its element back to the stock', () => {
     const rules = new ReflectionRules(newGame())
     at('10:00:00')
     play(rules, PlayerColor.Blue)
@@ -348,10 +367,11 @@ describe('Reflection rules', () => {
     play(rules, PlayerColor.Blue, moveTo(slash, cell(0, 0)))
     play(rules, PlayerColor.Blue, moveTo(backSlash, cell(1, 1)))
 
-    // From the grid to an occupied cell: the elements swap their cells
+    // From the grid to an occupied cell: the element of the cell goes back to the stock, the start cell is empty
     play(rules, PlayerColor.Blue, moveTo(slash, cell(1, 1)))
     expect(location(slash)).toMatchObject({ x: 1, y: 1 })
-    expect(location(backSlash)).toMatchObject({ x: 0, y: 0 })
+    expect(location(backSlash).type).toBe(LocationType.PlayerStock)
+    expect(rules.material(MaterialType.Mirror).location(l => l.type === LocationType.PlayerGrid && l.x === 0 && l.y === 0).length).toBe(0)
 
     // From the stock to an occupied cell: the element of the cell goes back to the stock
     play(rules, PlayerColor.Blue, moveTo(square, cell(1, 1)))

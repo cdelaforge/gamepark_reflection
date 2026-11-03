@@ -79,8 +79,9 @@ const HeartsMessage = ({ hearts, previous }: { hearts: number; previous: number 
   )
 }
 
+// On a narrow screen, the text gets smaller so that the table fits the width
 const dialogCss = css`
-  font-size: calc(3em * var(--gp-scale));
+  font-size: min(3em * var(--gp-scale), 4.5vw);
   max-width: 90vw;
   text-align: center;
 
@@ -93,6 +94,7 @@ const tableCss = css`
   margin: 0 auto 1em;
   border-spacing: 1em 0.3em;
   text-align: left;
+  white-space: nowrap;
 `
 
 const scoreCss = css`

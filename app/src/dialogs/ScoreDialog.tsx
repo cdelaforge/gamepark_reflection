@@ -1,5 +1,5 @@
 import { css } from '@emotion/react'
-import { faEye, faTrophy } from '@fortawesome/free-solid-svg-icons'
+import { faChevronLeft, faChevronRight, faEye, faTrophy } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Grid, Side, sides, traceLaser } from '@gamepark/reflection/laser/Laser'
 import { Puzzle } from '@gamepark/reflection/laser/PuzzleGenerator'
@@ -11,16 +11,16 @@ import { RoundResults } from '@gamepark/reflection/rules/SolvePuzzleRule'
 import { Dialog, ThemeButton, usePlayerId, usePlayerName, usePlayers, useRules } from '@gamepark/react-game'
 import { MaterialRules } from '@gamepark/rules-api'
 import { useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { formatTime } from '../headers/SolvePuzzleHeader'
 import portal from '../images/portal.svg?no-inline'
 import { getLastRound } from '../laser/laserSelection'
 import { ClueTile } from '../locators/ClueLocator'
+import { usePortrait } from '../locators/Layout'
 import { elementImages } from '../material/Material'
 
 /**
- * A button at the top of the screen opens the points of each player for each finished round.
+ * A button beside the player panels opens the points of each player for each finished round.
  * At the end of the game, a click on a score displays the final grid of that player for that round, given up or not,
  * and a click in the last column displays the solution expected for the round.
  */
@@ -31,89 +31,138 @@ export const ScoreDialog = () => {
   const players = usePlayers<PlayerColor>({ sortFromMe: true })
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<RoundView>()
-  const root = document.getElementById('root')
+  const [portraitRound, setPortraitRound] = useState<number>()
+  const portrait = usePortrait()
   const results = rules?.remind<RoundResults[] | undefined>(Memory.RoundResults)
-  if (!root || !rules || !results?.length) return null
+  if (!rules || !results?.length) return null
   const over = rules.isOver()
-  const view: RoundView | undefined = over ?(selected ?? getLastRound(rules, me)) : undefined
-  const total = (player: PlayerColor) => results.reduce((sum, round) => sum + (round.players.find(result => result.player === player)?.score ?? 0), 0)
+  const view: RoundView | undefined = over ? (selected ?? getLastRound(rules, me)) : undefined
+  const total = (player: PlayerColor) => results.reduce((sum, round) => sum + (round.players.find((result) => result.player === player)?.score ?? 0), 0)
+  const scoreCell = (round: number, player: PlayerColor) => {
+    const result = results.find((results) => results.round === round)?.players.find((result) => result.player === player)
+    if (!result) return <td key={player} />
+    const score = (
+      <>
+        <span css={scoreCss}>{result.score}</span>
+        <span css={timeCss}>{result.duration === undefined ? t('results.gave-up') : formatTime(result.duration)}</span>
+      </>
+    )
+    return (
+      <td key={player}>
+        {view ? (
+          <button
+            css={[cellButtonCss, view.round === round && !view.solution && view.player === player && selectedCss]}
+            onClick={() => setSelected({ round, player })}
+          >
+            {score}
+          </button>
+        ) : (
+          score
+        )}
+      </td>
+    )
+  }
+  const solutionButton = (round: number) =>
+    view && (
+      <button
+        css={[cellButtonCss, view.round === round && view.solution && selectedCss]}
+        title={t('scores.solution')}
+        onClick={() => setSelected({ round, player: view.player, solution: true })}
+      >
+        <FontAwesomeIcon icon={faEye} />
+      </button>
+    )
+  // On a portrait screen, one line per player and one round at a time: the table fits the width whatever the number of players
+  const rounds = results.map(({ round }) => round)
+  const round = view?.round ?? portraitRound ?? rounds[rounds.length - 1]
+  const showRound = (step: number) => {
+    const next = rounds[rounds.indexOf(round) + step]
+    if (view) setSelected({ ...view, round: next })
+    else setPortraitRound(next)
+  }
   return (
     <>
-      {createPortal(
-        <ThemeButton css={openButtonCss(players.length)} onClick={() => setOpen(true)}>
-          <FontAwesomeIcon icon={faTrophy} /> {t('button.scores')}
-        </ThemeButton>,
-        root
-      )}
+      <ThemeButton css={tableButtonCss} onClick={() => setOpen(true)}>
+        <FontAwesomeIcon icon={faTrophy} /> {t('button.scores')}
+      </ThemeButton>
       <Dialog open={open} onBackdropClick={() => setOpen(false)} css={dialogCss}>
         <h2>{t('scores.title')}</h2>
         <div css={contentCss}>
-          <table css={tableCss}>
-            <thead>
-              <tr>
-                <th />
-                {players.map(player => (
-                  <th key={player.id}>
-                    <PlayerName player={player.id} />
+          {portrait ? (
+            <table css={tableCss}>
+              <thead>
+                <tr>
+                  <th />
+                  <th css={roundHeaderCss}>
+                    <button css={arrowCss} disabled={round === rounds[0]} aria-label={t('scores.previous')} onClick={() => showRound(-1)}>
+                      <FontAwesomeIcon icon={faChevronLeft} />
+                    </button>
+                    {t('results.round', { round })}
+                    <button css={arrowCss} disabled={round === rounds[rounds.length - 1]} aria-label={t('scores.next')} onClick={() => showRound(1)}>
+                      <FontAwesomeIcon icon={faChevronRight} />
+                    </button>
                   </th>
-                ))}
-                {view && <th>{t('scores.solution-column')}</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {results.map(({ round, players: roundPlayers }) => (
-                <tr key={round}>
-                  <th>{t('results.round', { round })}</th>
-                  {players.map(({ id }) => {
-                    const result = roundPlayers.find(result => result.player === id)
-                    if (!result) return <td key={id} />
-                    const score = (
-                      <>
-                        <span css={scoreCss}>{result.score}</span>
-                        <span css={timeCss}>{result.duration === undefined ? t('results.gave-up') : formatTime(result.duration)}</span>
-                      </>
-                    )
-                    return (
-                      <td key={id}>
-                        {view ? (
-                          <button
-                            css={[cellButtonCss, view.round === round && !view.solution && view.player === id && selectedCss]}
-                            onClick={() => setSelected({ round, player: id })}
-                          >
-                            {score}
-                          </button>
-                        ) : (
-                          score
-                        )}
-                      </td>
-                    )
-                  })}
-                  {view && (
-                    <td>
-                      <button
-                        css={[cellButtonCss, view.round === round && view.solution && selectedCss]}
-                        title={t('scores.solution')}
-                        onClick={() => setSelected({ round, player: view.player, solution: true })}
-                      >
-                        <FontAwesomeIcon icon={faEye} />
-                      </button>
-                    </td>
-                  )}
+                  <th>{t('scores.total')}</th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th>{t('scores.total')}</th>
+              </thead>
+              <tbody>
                 {players.map(({ id }) => (
-                  <td key={id}>
-                    <span css={scoreCss}>{total(id)}</span>
-                  </td>
+                  <tr key={id}>
+                    <th css={nameCss}>
+                      <PlayerName player={id} />
+                    </th>
+                    {scoreCell(round, id)}
+                    <td>
+                      <span css={scoreCss}>{total(id)}</span>
+                    </td>
+                  </tr>
                 ))}
-                {view && <td />}
-              </tr>
-            </tfoot>
-          </table>
+              </tbody>
+              {view && (
+                <tfoot>
+                  <tr>
+                    <th>{t('scores.solution-column')}</th>
+                    <td>{solutionButton(round)}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          ) : (
+            <table css={tableCss}>
+              <thead>
+                <tr>
+                  <th />
+                  {players.map((player) => (
+                    <th key={player.id}>
+                      <PlayerName player={player.id} />
+                    </th>
+                  ))}
+                  {view && <th>{t('scores.solution-column')}</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {rounds.map((round) => (
+                  <tr key={round}>
+                    <th>{t('results.round', { round })}</th>
+                    {players.map(({ id }) => scoreCell(round, id))}
+                    {view && <td>{solutionButton(round)}</td>}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>{t('scores.total')}</th>
+                  {players.map(({ id }) => (
+                    <td key={id}>
+                      <span css={scoreCss}>{total(id)}</span>
+                    </td>
+                  ))}
+                  {view && <td />}
+                </tr>
+              </tfoot>
+            </table>
+          )}
           {view && <RoundGrid {...view} />}
         </div>
         <ThemeButton onClick={() => setOpen(false)}>{t('button.close')}</ThemeButton>
@@ -160,7 +209,7 @@ const MiniGrid = ({ puzzle, grid }: { puzzle: Puzzle; grid: Grid }) => {
           </div>
         ))
       )}
-      {sides.flatMap(side =>
+      {sides.flatMap((side) =>
         puzzle.clues[side].map((target, index) => {
           const [row, col] = cluePosition(side, index, size)
           return (
@@ -188,19 +237,19 @@ function cluePosition(side: Side, index: number, size: number) {
   }
 }
 
-// Below the player panels, see PlayerPanels
-const openButtonCss = (players: number) => css`
-  position: absolute;
-  right: ${1 / 2.4}em;
-  top: ${(8.5 + players * 16) / 2.4}em;
+/**
+ * The buttons beside the player panels, see RoundInfo
+ */
+export const tableButtonCss = css`
   font-size: 2.4em;
   background-color: rgba(255, 255, 255, 0.9);
   color: #002448;
   border-color: transparent;
 `
 
+// On a narrow screen, the text gets smaller so that the table fits the width
 const dialogCss = css`
-  font-size: calc(3em * var(--gp-scale));
+  font-size: min(3em * var(--gp-scale), 4.5vw);
   max-width: 90vw;
   max-height: 90vh;
   overflow: auto;
@@ -272,6 +321,30 @@ const cellButtonCss = css`
 
   &:hover {
     border-color: currentColor;
+  }
+`
+
+const nameCss = css`
+  max-width: 7em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`
+
+// Unlike the names of the players, the round and its arrows are never cut
+const roundHeaderCss = css`
+  && {
+    max-width: none;
+  }
+`
+
+const arrowCss = css`
+  all: unset;
+  cursor: pointer;
+  padding: 0 0.4em;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.25;
   }
 `
 

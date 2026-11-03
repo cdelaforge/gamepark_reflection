@@ -14,6 +14,12 @@ import { RuleId } from './RuleId'
 export type Solved = { player: PlayerColor; duration: number }
 
 /**
+ * A cell locked by the player: its element cannot move any more, and nothing can be dropped on it.
+ * The locks are a help of the player's interface, played as local moves: the server never knows them.
+ */
+export type Lock = { player: PlayerColor; x: number; y: number }
+
+/**
  * The results of a round, displayed to the players before they start the next one and in the score table. No duration: the player gave up.
  * In a challenge, the hearts left after the round.
  */
@@ -30,9 +36,10 @@ export class SolvePuzzleRule extends SimultaneousRule<PlayerColor, MaterialType,
   getActivePlayerLegalMoves(player: PlayerColor) {
     const helper = new PlayerPuzzleHelper(this.game, player)
     if (!helper.hasStarted) return [this.chrono(player, ChronoId.Start).rollItem()]
-    // Every cell but the portals: an element dropped on an occupied cell swaps places with its element
+    // Every cell but the portals and the locked cells: an element dropped on an occupied cell sends its element back to the stock
+    const locked = this.isLocked(player)
     const cells = helper.grid.flatMap((row, y) =>
-      row.flatMap((element, x) => (element === Element.Portal ? [] : [{ type: LocationType.PlayerGrid, player, x, y }]))
+      row.flatMap((element, x) => (element === Element.Portal || locked(x, y) ? [] : [{ type: LocationType.PlayerGrid, player, x, y }]))
     )
     const moves: MaterialMove<PlayerColor, MaterialType, LocationType>[] = []
     // Only the element on top of each pile of the stock can be moved: fewer legal moves keep the interface fast on big grids
@@ -42,6 +49,7 @@ export class SolvePuzzleRule extends SimultaneousRule<PlayerColor, MaterialType,
       moves.push(...cells.map(location => mirror.moveItem(location)))
     }
     for (const [index, item] of helper.placedMirrors.entries) {
+      if (locked(item.location.x!, item.location.y!)) continue
       const mirror = this.material(MaterialType.Mirror).index(index)
       moves.push(mirror.moveItem({ type: LocationType.PlayerStock, player }))
       moves.push(...cells.filter(({ x, y }) => x !== item.location.x || y !== item.location.y).map(location => mirror.moveItem(location)))
@@ -54,13 +62,12 @@ export class SolvePuzzleRule extends SimultaneousRule<PlayerColor, MaterialType,
     if (!isMoveItemType(MaterialType.Mirror)(move)) return []
     this.moveSelection(move)
     if (move.location.type !== LocationType.PlayerGrid) return []
-    // The element of the destination cell takes the place of the moved element (the consequences are played after the move)
-    const { type, player, x, y } = this.material(MaterialType.Mirror).getItem(move.itemIndex).location
+    // The element of the destination cell goes back to the stock (the consequences are played after the move)
     return this.material(MaterialType.Mirror)
       .location(LocationType.PlayerGrid)
       .player(move.location.player)
       .filter(({ location }) => location.x === move.location.x && location.y === move.location.y)
-      .moveItems(type === LocationType.PlayerGrid ? { type, player, x, y } : { type: LocationType.PlayerStock, player: move.location.player })
+      .moveItems({ type: LocationType.PlayerStock, player: move.location.player })
   }
 
   afterItemMove(move: ItemMove<PlayerColor, MaterialType, LocationType>) {
@@ -106,6 +113,7 @@ export class SolvePuzzleRule extends SimultaneousRule<PlayerColor, MaterialType,
    */
   revealPuzzle(player: PlayerColor) {
     this.forget(Memory.Duration, player)
+    this.forget(Memory.Locks, player)
     const round = this.remind<number>(Memory.Round)
     return [
       ...this.archiveRound(player, round - 1),
@@ -154,6 +162,14 @@ export class SolvePuzzleRule extends SimultaneousRule<PlayerColor, MaterialType,
       for (const mirror of this.material(MaterialType.Mirror).player(player).selected().getItems()) delete mirror.selected
     }
     switch (move.type) {
+      case CustomMoveType.Lock: {
+        const { player, x, y } = move.data as Lock
+        this.memorize<Lock[]>(Memory.Locks, (locks = []) =>
+          this.isLocked(player)(x, y) ? locks.filter(lock => lock.x !== x || lock.y !== y) : [...locks, { player, x, y }],
+          player
+        )
+        return []
+      }
       case CustomMoveType.GiveUp:
         this.memorize(Memory.GivingUp, true, move.data)
         return [this.chrono(move.data, ChronoId.Last).rollItem()]
@@ -229,6 +245,11 @@ export class SolvePuzzleRule extends SimultaneousRule<PlayerColor, MaterialType,
 
   isChallengeOver(goal: number) {
     return this.remind<number>(Memory.Hearts) < 0 || this.remind<number>(Memory.Score, this.game.players[0]) === goal
+  }
+
+  isLocked(player: PlayerColor) {
+    const locks = this.remind<Lock[] | undefined>(Memory.Locks, player) ?? []
+    return (x: number, y: number) => locks.some(lock => lock.x === x && lock.y === y)
   }
 
   chrono(player: PlayerColor, id: ChronoId) {

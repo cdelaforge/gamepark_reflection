@@ -1,11 +1,17 @@
 import { css } from '@emotion/react'
 import { LocationType } from '@gamepark/reflection/material/LocationType'
-import { PlayerColor } from '@gamepark/reflection/PlayerColor'
-import { DropAreaDescription, ItemContext, LocationContext, Locator, MaterialContext, usePlayerId, useRules } from '@gamepark/react-game'
 import { MaterialType } from '@gamepark/reflection/material/MaterialType'
+import { PlayerColor } from '@gamepark/reflection/PlayerColor'
+import { CustomMoveType } from '@gamepark/reflection/rules/CustomMoveType'
+import { PlayerPuzzleHelper } from '@gamepark/reflection/rules/PlayerPuzzleHelper'
+import { Lock } from '@gamepark/reflection/rules/SolvePuzzleRule'
+import { DropAreaDescription, ItemContext, LocationContext, Locator, MaterialContext, usePlay, usePlayerId, useRules } from '@gamepark/react-game'
 import { isMoveItemType, Location, MaterialItem, MaterialMove, MaterialRules, MoveItem } from '@gamepark/rules-api'
+import { useEffect } from 'react'
+import { useSettings } from '../dialogs/SettingsDialog'
 import portal from '../images/portal.svg?no-inline'
 import { getDisplayedRound } from '../laser/laserSelection'
+import { elementImages, isLocked, lockCss } from '../material/Material'
 import { CELL, cellCoordinates, getGridSize } from './Layout'
 
 /**
@@ -42,6 +48,15 @@ class GridCellDescription extends DropAreaDescription {
     &&:after {
       display: none;
     }
+
+    /* The framework lights up a clickable location with a transparent white: the cell would show the background */
+    &&:hover {
+      background-color: #6a6d80;
+    }
+
+    &:hover .preview {
+      opacity: 0.4;
+    }
   `
   content = GridCellContent
 
@@ -69,18 +84,63 @@ class GridCellDescription extends DropAreaDescription {
   }
 }
 
+/**
+ * A portal, or on an empty cell, the preview of the element selected in the stock when the mouse is over the cell
+ */
 function GridCellContent({ location }: { location: Location }) {
   const rules = useRules<MaterialRules>()
   const player = usePlayerId<PlayerColor>()
+  const { hoverPreview } = useSettings()
   if (!rules) return null
+  const { x, y } = location as { x: number; y: number }
   const portals = getDisplayedRound(rules, player)?.puzzle?.portals ?? []
-  if (!portals.some(cell => cell.col === location.x && cell.row === location.y)) return null
-  return <img src={portal} alt="" css={fullSize} />
+  if (portals.some(cell => cell.col === x && cell.row === y)) return <img src={portal} alt="" css={fullSize} />
+  if (player === undefined || !canPlay(rules, player)) return null
+  const locked = isLocked(rules, player, x, y)
+  const mirrors = rules.material(MaterialType.Mirror).player(player)
+  const empty = !mirrors.location(LocationType.PlayerGrid).filter(({ location }) => location.x === x && location.y === y).length
+  const selected = mirrors.location(LocationType.PlayerStock).selected().getItem()
+  return (
+    <div css={fullSize} data-cell={`${x},${y}`}>
+      {hoverPreview && empty && !locked && selected && <img src={elementImages[selected.id]} alt="" className="preview" css={[fullSize, previewCss]} />}
+      {locked && <div css={lockCss} />}
+    </div>
+  )
+}
+
+const canPlay = (rules: MaterialRules, player: PlayerColor) => rules.isTurnToPlay(player) && new PlayerPuzzleHelper(rules.game, player).hasStarted
+
+/**
+ * A right click on a cell (a long press on a phone) locks it, or unlocks it. The element placed on the cell is above the cell:
+ * the cell is found under the pointer.
+ */
+export function useCellLock() {
+  const rules = useRules<MaterialRules>()
+  const player = usePlayerId<PlayerColor>()
+  const play = usePlay()
+  useEffect(() => {
+    if (!rules || player === undefined) return
+    const handler = (event: MouseEvent) => {
+      const cell = document.elementsFromPoint(event.clientX, event.clientY).find(element => element instanceof HTMLElement && element.dataset.cell)
+      if (!(cell instanceof HTMLElement)) return
+      event.preventDefault()
+      const [x, y] = cell.dataset.cell!.split(',').map(Number)
+      play(rules.customMove(CustomMoveType.Lock, { player, x, y } satisfies Lock), { local: true })
+    }
+    document.addEventListener('contextmenu', handler)
+    return () => document.removeEventListener('contextmenu', handler)
+  }, [rules, player, play])
 }
 
 const fullSize = css`
+  display: block;
   width: 100%;
   height: 100%;
+`
+
+// Visible when the mouse is over the cell, see GridCellDescription
+const previewCss = css`
+  opacity: 0;
 `
 
 export const playerGridLocator = new PlayerGridLocator()

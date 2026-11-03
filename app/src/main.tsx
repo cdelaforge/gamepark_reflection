@@ -8,6 +8,7 @@ import { createRoot } from 'react-dom/client'
 import { gameAnimations } from './animations/GameAnimations'
 import { App } from './App'
 import { ResultHeader } from './headers/ResultHeader'
+import space from './images/space.webp'
 import { Locators } from './locators/Locators'
 import { Material } from './material/Material'
 
@@ -16,6 +17,27 @@ import { Material } from './material/Material'
 const scoring = { getScoringKeys: () => [], getScoringHeader: () => '', getScoringPlayerData: () => null, ResultHeader }
 
 const theme = {
+  root: {
+    background: { image: space, overlay: 'rgba(0, 0, 0, 0.2)' }
+  },
+  // The header of a portrait screen is narrow: the sentence goes on several lines (up to 3) instead of hiding its button,
+  // out of the platform buttons (wider on the right with the undo button)
+  header: {
+    bar: css`
+      @media (max-aspect-ratio: 1/1) {
+        box-sizing: border-box;
+        padding: 0 16em 0 9em;
+
+        h1 {
+          white-space: normal;
+          // The room between the platform buttons depends on the size of the interface: the sentence keeps to 2 lines
+          font-size: min(2em, (100vw - 25em) / 17);
+          line-height: 1.15;
+          margin: 0.1em 0;
+        }
+      }
+    `
+  },
   dialog: {
     buttons: css`
       color: inherit;
