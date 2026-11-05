@@ -1,0 +1,217 @@
+<!doctype html>
+<!-- Source of app/public/rules-<lang>.pdf: yarn rules-pdf fills the keys in double braces from the translations and texts.json, then prints it -->
+<html lang="{{lang}}">
+<head>
+  <meta charset="utf-8">
+  <base href="{{base}}">
+  <title>Reflection – {{rules.title}}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 12mm 15mm;
+    }
+
+    body {
+      margin: 0;
+      font: 10pt/1.35 Arial, sans-serif;
+      color: #222222;
+      text-align: justify;
+    }
+
+    header {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 10pt;
+    }
+
+    header svg {
+      width: 62pt;
+    }
+
+    header h1 {
+      margin: 0 0 4pt;
+      font: 37pt 'Arial Black', Arial, sans-serif;
+      color: #2b2d3a;
+      border-bottom: 2.9pt solid #e0ad21;
+      border-radius: 1.5pt;
+      line-height: 1.1;
+    }
+
+    .subtitle {
+      margin: 12pt 0 10pt;
+      text-align: center;
+      font-weight: bold;
+      color: #705203;
+    }
+
+    h2 {
+      margin: 12pt 0 5pt;
+      padding: 4pt 7pt;
+      font-size: 13pt;
+      color: #705203;
+      background-color: #e0ad21;
+      border: 1.5pt solid #705203;
+      break-after: avoid;
+    }
+
+    .new-page {
+      break-before: page;
+      margin-top: 0;
+    }
+
+    p {
+      margin: 0 0 6pt;
+    }
+
+    ul {
+      margin: 0 0 6pt;
+      padding-left: 18pt;
+    }
+
+    li {
+      margin-bottom: 2pt;
+      break-inside: avoid;
+    }
+
+    .material {
+      display: grid;
+      grid-template-columns: 108pt 1fr;
+      align-items: center;
+      gap: 6pt 8pt;
+    }
+
+    .material p {
+      margin: 0;
+    }
+
+    .tiles {
+      display: flex;
+      gap: 2.5pt;
+    }
+
+    .tile {
+      width: 22.5pt;
+      height: 22.5pt;
+      background-color: #55586b;
+      border-radius: 2pt;
+    }
+
+    .figures {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 17pt;
+      margin: 10pt 0;
+      break-inside: avoid;
+    }
+
+    .cell {
+      height: 35pt;
+    }
+
+    .grid {
+      height: 130pt;
+    }
+
+    .inline {
+      height: 17pt;
+      vertical-align: middle;
+      margin-right: 4pt;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <svg viewBox="146 35 62 60" aria-hidden="true">
+      <rect x="164" y="50.5" width="43" height="43" rx="4.8" fill="#55586b"/>
+      <polyline points="146.7,72.15 185.5,72.15 185.5,35.67" fill="none" stroke="#2ecc40" stroke-width="3.36" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="172.1" y1="85.6" x2="198.9" y2="58.7" stroke="#ffffff" stroke-width="4.8" stroke-linecap="round"/>
+      <line x1="172.1" y1="85.6" x2="198.9" y2="58.7" stroke="#55586b" stroke-width="1.44" stroke-linecap="round"/>
+    </svg>
+    <h1>Reflection</h1>
+  </header>
+  <p class="subtitle">{{pdf.subtitle}}</p>
+
+  <h2>{{rules.goal}}</h2>
+  <p>{{rules.goal.1}}</p>
+
+  <h2>{{rules.material}}</h2>
+  <div class="material">
+    <div class="tiles">
+      <img class="tile" src="../src/images/slash.svg" alt="">
+      <img class="tile" src="../src/images/backslash.svg" alt="">
+      <img class="tile" src="../src/images/vertical.svg" alt="">
+      <img class="tile" src="../src/images/horizontal.svg" alt="">
+    </div>
+    <p>{{rules.material.mirrors}}</p>
+    <div class="tiles">
+      <img class="tile" src="../src/images/square.svg" alt="">
+      <img class="tile" src="../src/images/triangle-a.svg" alt="">
+      <img class="tile" src="../src/images/triangle-b.svg" alt="">
+    </div>
+    <p>{{rules.material.special-shapes}}</p>
+    <div class="tiles"><img class="tile" src="../src/images/black-hole.svg" alt=""></div>
+    <p>{{rules.material.black-holes}}</p>
+    <div class="tiles"><img class="tile" src="../src/images/portal.svg" alt=""></div>
+    <p>{{rules.material.light-warps}}</p>
+  </div>
+  <div class="figures">
+    <img class="cell" src="../src/images/rules/mirror-reflects.png" alt="">
+    <img class="cell" src="../src/images/rules/black-hole-absorbs.png" alt="">
+    <img class="cell" src="../src/images/rules/light-warp.png" alt="">
+  </div>
+
+  <h2>{{rules.clues}}</h2>
+  <p>{{rules.clues.1}}</p>
+  <ul>
+    <li>{{rules.clues.green}}</li>
+    <li>{{rules.clues.yellow}}</li>
+    <li>{{rules.clues.grey}}</li>
+  </ul>
+  <p>{{rules.clues.2}}</p>
+  <p>{{rules.clues.3}}</p>
+  <div class="figures">
+    <img class="grid" src="../src/images/rules/puzzle.png" alt="">
+    <img class="grid" src="../src/images/rules/laser-path.png" alt="">
+  </div>
+
+  <h2 class="new-page">{{rules.play}}</h2>
+  <ul>
+    <li>{{rules.play.start}}</li>
+    <li>{{rules.play.place}}</li>
+    <li>{{rules.play.remove}}</li>
+    <li><img class="inline" src="../src/images/rules/locked.png" alt="">{{rules.play.lock}}</li>
+    <li>{{rules.play.keys}}</li>
+    <li>{{rules.play.solved}}</li>
+    <li>{{rules.play.give-up}}</li>
+    <li>{{rules.play.settings}}</li>
+  </ul>
+
+  <h2>{{rules.multi}}</h2>
+  <p>{{rules.multi.1}}</p>
+  <p>{{rules.multi.2}}</p>
+  <p>{{rules.multi.3}}</p>
+
+  <h2>{{rules.solo}}</h2>
+  <p>{{rules.solo.1}}</p>
+  <ul>
+    <li>{{rules.solo.easy}}</li>
+    <li>{{rules.solo.medium}}</li>
+    <li>{{rules.solo.hard}}</li>
+  </ul>
+
+  <h2>{{pdf.options}}</h2>
+  <ul>
+    <li>{{pdf.options.grid-size}}</li>
+    <li>{{pdf.options.items}}</li>
+    <li>{{pdf.options.black-holes}}</li>
+    <li>{{pdf.options.special-shapes}}</li>
+    <li>{{pdf.options.time-limit}}</li>
+    <li>{{pdf.options.rounds}}</li>
+  </ul>
+
+  <h2>{{rules.tips}}</h2>
+  <p>{{rules.tips.1}}</p>
+</body>
+</html>

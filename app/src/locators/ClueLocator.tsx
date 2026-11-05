@@ -6,10 +6,11 @@ import { LocationDescription, Locator, MaterialContext, usePlayerId, useRules } 
 import { Location, MaterialRules } from '@gamepark/rules-api'
 import { getDisplayedRound, toggleLaser, useDisplayedGrid, useLaserSelection } from '../laser/laserSelection'
 import { ClueNumber } from './ClueNumber'
+import { FocusHighlight } from './FocusHighlight'
 import { CELL, cellCoordinates, getGridSize } from './Layout'
 
 /**
- * The clues around the grid, displayed once the player has started the round, until they start the next one, and for the round on display at the end of the game
+ * The clues around the grid, displayed once the player has started the round, until the end of the round, and for the round on display at the end of the game
  */
 class ClueLocator extends Locator {
   locationDescription = new ClueDescription()
@@ -57,7 +58,12 @@ function ClueContent({ location }: { location: Location }) {
   const target = getDisplayedRound(rules, player)?.puzzle?.clues[side][index]
   if (!target) return null
   const selected = selection?.side === side && selection.index === index
-  return <ClueTile target={target} current={traceLaser(grid, side, index).clue} selected={selected} onClick={() => toggleLaser(side, index)} />
+  return (
+    <>
+      <ClueTile target={target} current={traceLaser(grid, side, index).clue} selected={selected} onClick={() => toggleLaser(side, index)} />
+      <FocusHighlight location={location} />
+    </>
+  )
 }
 
 type ClueTileProps = { target: Clue; current: Clue; selected?: boolean; onClick?: () => void }

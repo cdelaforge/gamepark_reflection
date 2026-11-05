@@ -10,7 +10,8 @@ export default tseslint.config([
         extends: [js.configs.recommended, tseslint.configs.recommended],
         languageOptions: {
             ecmaVersion: 2020,
-            globals: globals.browser
+            globals: globals.browser,
+            parserOptions: { tsconfigRootDir: import.meta.dirname }
         },
         rules: {
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }]

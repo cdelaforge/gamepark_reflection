@@ -1,13 +1,21 @@
 import { css } from '@emotion/react'
-import { faCircleCheck, faCircleXmark, faFlagCheckered, faHeart, faHeartCrack, faStopwatch } from '@fortawesome/free-solid-svg-icons'
+import { faCircleCheck, faCircleXmark, faFlagCheckered, faHeart, faHeartCrack, faHourglassEnd, faStopwatch } from '@fortawesome/free-solid-svg-icons'
 import { Challenge, challenges } from '@gamepark/reflection/Challenge'
 import { PlayerColor } from '@gamepark/reflection/PlayerColor'
 import { Memory } from '@gamepark/reflection/rules/Memory'
 import { PlayerPuzzleHelper } from '@gamepark/reflection/rules/PlayerPuzzleHelper'
 import { StyledPlayerPanel, useNow, usePlayerId, usePlayers, useRules } from '@gamepark/react-game'
 import { MaterialRules } from '@gamepark/rules-api'
+import { TFunction } from 'i18next'
+import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { formatTime, getRemainingTime } from '../headers/SolvePuzzleHeader'
+import blue from '../images/panels/panel-1.webp'
+import red from '../images/panels/panel-2.webp'
+import green from '../images/panels/panel-3.webp'
+import yellow from '../images/panels/panel-4.webp'
+import white from '../images/panels/panel-5.webp'
+import black from '../images/panels/panel-6.webp'
 import score from '../images/score.svg?no-inline'
 import { usePortrait } from '../locators/Layout'
 import { iconUrl } from '../material/Material'
@@ -15,9 +23,20 @@ import { iconUrl } from '../material/Material'
 const stopwatch = iconUrl(faStopwatch, 'white')
 const solved = iconUrl(faCircleCheck, '#5cd65c')
 const gaveUp = iconUrl(faCircleXmark, '#f9665e')
+const timeOut = iconUrl(faHourglassEnd, '#f9665e')
 const finished = iconUrl(faFlagCheckered, 'white')
 const heart = iconUrl(faHeart, '#f9665e')
 const heartCrack = iconUrl(faHeartCrack, '#f9665e')
+
+// The space of the table, lit by the color of the player
+const backgrounds: Record<PlayerColor, string> = {
+  [PlayerColor.Blue]: blue,
+  [PlayerColor.Red]: red,
+  [PlayerColor.Green]: green,
+  [PlayerColor.Yellow]: yellow,
+  [PlayerColor.White]: white,
+  [PlayerColor.Black]: black
+}
 
 export const PlayerPanels = () => {
   const players = usePlayers<PlayerColor>({ sortFromMe: true })
@@ -25,6 +44,7 @@ export const PlayerPanels = () => {
   const me = usePlayerId<PlayerColor>()
   const portrait = usePortrait()
   const now = useNow({ updateRate: 1000 })
+  const { t } = useTranslation()
   const root = document.getElementById('root')
   if (!root || !rules) {
     return null
@@ -37,12 +57,13 @@ export const PlayerPanels = () => {
       <div css={portrait && portraitScaleCss}>
       {players.map((player, index) => {
         const points = rules.remind<number | undefined>(Memory.Score, player.id) ?? 0
-        const time = getTimeCounter(rules, player.id, me, now)
+        const time = getTimeCounter(rules, player.id, me, now, t)
         // A single counter below the main one is narrow and on the left: without hearts, the score goes beside the time
         return (
           <StyledPlayerPanel
             key={player.id}
             player={player}
+            backgroundImage={backgrounds[player.id]}
             css={portrait ? portraitPosition(index, players.length) : panelPosition(index)}
             activeRing
             mainCounter={challenge ? { image: score, value: `${points}/${challenges[challenge].goal}` } : undefined}
@@ -57,21 +78,32 @@ export const PlayerPanels = () => {
   )
 }
 
-const isDone = (rules: MaterialRules, player: PlayerColor) => new PlayerPuzzleHelper(rules.game, player).hasStarted && !rules.isTurnToPlay(player)
+// The players of the round who are not done yet. Not isTurnToPlay: during the tutorial, only the player of the current step can play.
+const isPlaying = (rules: MaterialRules, player: PlayerColor) => rules.game.rule?.players?.includes(player) ?? false
+
+// A player who gave up is done, even while they look at the solution
+const isDone = (rules: MaterialRules, player: PlayerColor) => {
+  const helper = new PlayerPuzzleHelper(rules.game, player)
+  return helper.hasStarted && (!isPlaying(rules, player) || helper.hasGivenUp)
+}
 
 /**
- * The time left to a player, or their result once they are done.
+ * The time left to a player, or their result once they are done, until the end of the game.
  * As long as a player is solving the puzzle, I only know whether the other players are done: neither their result nor their time.
  */
-const getTimeCounter = (rules: MaterialRules, player: PlayerColor, me: PlayerColor | undefined, now: number) => {
+const getTimeCounter = (rules: MaterialRules, player: PlayerColor, me: PlayerColor | undefined, now: number, t: TFunction) => {
   const hidden = { image: stopwatch, value: '–' }
-  if (me !== undefined && player !== me && rules.game.players.some(p => rules.isTurnToPlay(p))) {
+  if (me !== undefined && player !== me && rules.game.players.some(p => isPlaying(rules, p))) {
     return isDone(rules, player) ? { ...hidden, image: finished } : hidden
   }
-  if (!new PlayerPuzzleHelper(rules.game, player).hasStarted) return hidden
-  if (rules.isTurnToPlay(player)) return { ...hidden, value: formatTime(getRemainingTime(rules, player, now)) }
+  // At the end of the game, the grids are archived but the results of the last round are still known
+  if (!rules.isOver()) {
+    if (!new PlayerPuzzleHelper(rules.game, player).hasStarted) return hidden
+    if (!isDone(rules, player)) return { ...hidden, value: formatTime(getRemainingTime(rules, player, now)) }
+  }
   const duration = rules.remind<number | undefined>(Memory.Duration, player)
-  return duration === undefined ? { ...hidden, image: gaveUp } : { ...hidden, image: solved, value: formatTime(duration) }
+  if (duration !== undefined) return { ...hidden, image: solved, value: formatTime(duration) }
+  return rules.remind(Memory.GivingUp, player) ? { image: gaveUp, value: t('panel.gave-up') } : { image: timeOut, value: t('panel.time-out') }
 }
 
 /**

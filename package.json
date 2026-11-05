@@ -4,7 +4,7 @@
     "rules",
     "app"
   ],
-  "author": "Romain Fromi <romain@game-park.com> (https://game-park.com/)",
+  "author": "Christophe Delaforge <gamepark@delaforge.eu>",
   "license": "ISC",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -22,6 +22,7 @@
     "dev": "yarn workspace @gamepark/reflection-app run dev",
     "test": "yarn workspace @gamepark/reflection run test && yarn workspace @gamepark/reflection-app run test",
     "preview": "yarn workspace @gamepark/reflection-app run preview",
+    "rules-pdf": "yarn workspace @gamepark/reflection-app run rules-pdf",
     "build": "yarn workspace @gamepark/reflection-app run build",
     "deploy": "yarn workspace @gamepark/reflection-app run deploy",
     "publish": "yarn workspace @gamepark/reflection run publish",

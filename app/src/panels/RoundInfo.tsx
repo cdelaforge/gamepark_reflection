@@ -34,19 +34,26 @@ export const RoundInfo = () => {
         <span css={progressCss}>{progress}</span>
         {!portrait && <SettingsButton />}
       </div>
-      {/* Side by side: the column is short below 6 panels */}
-      <div css={lineCss}>
-        <ScoreDialog />
-        <SolutionButton />
-        {portrait && <SettingsButton />}
-      </div>
+      {/* One below the other in the column: it still ends above the bottom of the screen with 6 panels */}
+      {portrait ? (
+        <div css={lineCss}>
+          <ScoreDialog />
+          <SolutionButton />
+          <SettingsButton />
+        </div>
+      ) : (
+        <div css={stackCss}>
+          <ScoreDialog />
+          <SolutionButton />
+        </div>
+      )}
     </div>,
     root
   )
 }
 
 /**
- * Once the player gave up, until they start the next round: switches between their grid and the solution
+ * Once the player gave up, until the end of the round: switches between their grid and the solution
  */
 const SolutionButton = () => {
   const { t } = useTranslation()
@@ -89,6 +96,12 @@ const bottomCss = css`
 const lineCss = css`
   display: flex;
   align-items: center;
+  gap: 1em;
+`
+
+// The grid stretches the buttons to the width of the widest one
+const stackCss = css`
+  display: grid;
   gap: 1em;
 `
 

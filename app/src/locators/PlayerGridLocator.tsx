@@ -3,15 +3,15 @@ import { LocationType } from '@gamepark/reflection/material/LocationType'
 import { MaterialType } from '@gamepark/reflection/material/MaterialType'
 import { PlayerColor } from '@gamepark/reflection/PlayerColor'
 import { CustomMoveType } from '@gamepark/reflection/rules/CustomMoveType'
-import { PlayerPuzzleHelper } from '@gamepark/reflection/rules/PlayerPuzzleHelper'
 import { Lock } from '@gamepark/reflection/rules/SolvePuzzleRule'
 import { DropAreaDescription, ItemContext, LocationContext, Locator, MaterialContext, usePlay, usePlayerId, useRules } from '@gamepark/react-game'
-import { isMoveItemType, Location, MaterialItem, MaterialMove, MaterialRules, MoveItem } from '@gamepark/rules-api'
+import { isMoveItemType, Location, MaterialItem, MaterialMove, MaterialMoveBuilder, MaterialRules, MoveItem } from '@gamepark/rules-api'
 import { useEffect } from 'react'
 import { useSettings } from '../dialogs/SettingsDialog'
 import portal from '../images/portal.svg?no-inline'
 import { getDisplayedRound } from '../laser/laserSelection'
-import { elementImages, isLocked, lockCss } from '../material/Material'
+import { elementImages, isLocked, isSolving, lockCss } from '../material/Material'
+import { FocusHighlight } from './FocusHighlight'
 import { CELL, cellCoordinates, getGridSize } from './Layout'
 
 /**
@@ -84,10 +84,19 @@ class GridCellDescription extends DropAreaDescription {
   }
 }
 
+function GridCellContent({ location }: { location: Location }) {
+  return (
+    <>
+      <GridCellElement location={location} />
+      <FocusHighlight location={location} />
+    </>
+  )
+}
+
 /**
  * A portal, or on an empty cell, the preview of the element selected in the stock when the mouse is over the cell
  */
-function GridCellContent({ location }: { location: Location }) {
+function GridCellElement({ location }: { location: Location }) {
   const rules = useRules<MaterialRules>()
   const player = usePlayerId<PlayerColor>()
   const { hoverPreview } = useSettings()
@@ -95,7 +104,7 @@ function GridCellContent({ location }: { location: Location }) {
   const { x, y } = location as { x: number; y: number }
   const portals = getDisplayedRound(rules, player)?.puzzle?.portals ?? []
   if (portals.some(cell => cell.col === x && cell.row === y)) return <img src={portal} alt="" css={fullSize} />
-  if (player === undefined || !canPlay(rules, player)) return null
+  if (player === undefined || !isSolving(rules, player)) return null
   const locked = isLocked(rules, player, x, y)
   const mirrors = rules.material(MaterialType.Mirror).player(player)
   const empty = !mirrors.location(LocationType.PlayerGrid).filter(({ location }) => location.x === x && location.y === y).length
@@ -108,28 +117,60 @@ function GridCellContent({ location }: { location: Location }) {
   )
 }
 
-const canPlay = (rules: MaterialRules, player: PlayerColor) => rules.isTurnToPlay(player) && new PlayerPuzzleHelper(rules.game, player).hasStarted
+const LONG_PRESS = 600
 
 /**
- * A right click on a cell (a long press on a phone) locks it, or unlocks it. The element placed on the cell is above the cell:
- * the cell is found under the pointer.
+ * A right click on a cell, or a long press on a touch screen, locks it, or unlocks it.
+ * A locked cell is not clickable, so the framework lets the pointer events through it: the cell is found by its position.
+ * The long press is detected here: the browsers of the phones do not all open a context menu, and the framework only plays
+ * legal moves on a long click, while the lock is a move of the interface only.
  */
 export function useCellLock() {
-  const rules = useRules<MaterialRules>()
   const player = usePlayerId<PlayerColor>()
   const play = usePlay()
   useEffect(() => {
-    if (!rules || player === undefined) return
-    const handler = (event: MouseEvent) => {
-      const cell = document.elementsFromPoint(event.clientX, event.clientY).find(element => element instanceof HTMLElement && element.dataset.cell)
-      if (!(cell instanceof HTMLElement)) return
-      event.preventDefault()
+    if (player === undefined) return
+    const cellAt = (x: number, y: number) =>
+      [...document.querySelectorAll<HTMLElement>('[data-cell]')].find(cell => {
+        const { left, right, top, bottom } = cell.getBoundingClientRect()
+        return x >= left && x < right && y >= top && y < bottom
+      })
+    let lastLock = -Infinity
+    const lock = (cell: HTMLElement) => {
       const [x, y] = cell.dataset.cell!.split(',').map(Number)
-      play(rules.customMove(CustomMoveType.Lock, { player, x, y } satisfies Lock), { local: true })
+      play(MaterialMoveBuilder.customMove(CustomMoveType.Lock, { player, x, y } satisfies Lock), { local: true })
     }
-    document.addEventListener('contextmenu', handler)
-    return () => document.removeEventListener('contextmenu', handler)
-  }, [rules, player, play])
+    const onContextMenu = (event: MouseEvent) => {
+      const cell = cellAt(event.clientX, event.clientY)
+      if (!cell) return
+      event.preventDefault()
+      // A long press already locked the cell: some phones follow it with a context menu
+      if (event.timeStamp - lastLock > 1000) lock(cell)
+    }
+    let press: { timer: number; x: number; y: number } | undefined
+    const cancel = () => {
+      clearTimeout(press?.timer)
+      press = undefined
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      cancel()
+      const cell = event.pointerType !== 'mouse' && cellAt(event.clientX, event.clientY)
+      if (cell) press = { timer: window.setTimeout(() => {
+        lastLock = performance.now()
+        lock(cell)
+      }, LONG_PRESS), x: event.clientX, y: event.clientY }
+    }
+    const onPointerMove = (event: PointerEvent) => {
+      if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 5) cancel()
+    }
+    // The framework stops the propagation of the pointer events on the items: they are caught before
+    const listeners = { contextmenu: onContextMenu, pointerdown: onPointerDown, pointermove: onPointerMove, pointerup: cancel, pointercancel: cancel }
+    for (const [type, listener] of Object.entries(listeners)) document.addEventListener(type, listener as EventListener, true)
+    return () => {
+      cancel()
+      for (const [type, listener] of Object.entries(listeners)) document.removeEventListener(type, listener as EventListener, true)
+    }
+  }, [player, play])
 }
 
 const fullSize = css`

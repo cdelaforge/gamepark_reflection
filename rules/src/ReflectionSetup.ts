@@ -2,7 +2,7 @@ import { getEnumValues, MaterialGameSetup } from '@gamepark/rules-api'
 import { challenges, maxPuzzles, START_HEARTS } from './Challenge'
 import { ReflectionOptions } from './ReflectionOptions'
 import { ReflectionRules } from './ReflectionRules'
-import { generatePuzzle } from './laser/PuzzleGenerator'
+import { GeneratedPuzzle, generatePuzzle, PuzzleOptions } from './laser/PuzzleGenerator'
 import { ChronoId } from './material/ChronoId'
 import { LocationType } from './material/LocationType'
 import { MaterialType } from './material/MaterialType'
@@ -31,7 +31,7 @@ export class ReflectionSetup extends MaterialGameSetup<PlayerColor, MaterialType
       this.memorize(Memory.Hearts, START_HEARTS)
     }
     for (let round = 1; round <= rounds; round++) {
-      const { puzzle, elements, solution } = generatePuzzle({ ...options, items })
+      const { puzzle, elements, solution } = this.generatePuzzle({ ...options, items })
       for (const player of this.players) {
         this.material(MaterialType.Puzzle).createItem({ id: puzzle, location: { type: LocationType.PuzzleDeck, id: round, player } })
         this.material(MaterialType.Solution).createItem({ id: solution, location: { type: LocationType.PuzzleDeck, id: round, player } })
@@ -41,6 +41,13 @@ export class ReflectionSetup extends MaterialGameSetup<PlayerColor, MaterialType
     this.material(MaterialType.Chrono).createItems(
       this.players.flatMap(player => getEnumValues(ChronoId).map(id => ({ id, location: { type: LocationType.PlayerChrono, player } })))
     )
+  }
+
+  /**
+   * A random puzzle, the same for every player. The tutorial overrides it with a scripted puzzle.
+   */
+  generatePuzzle(options: PuzzleOptions): GeneratedPuzzle {
+    return generatePuzzle(options)
   }
 
   start() {

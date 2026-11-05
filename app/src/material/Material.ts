@@ -8,7 +8,7 @@ import { Lock } from '@gamepark/reflection/rules/SolvePuzzleRule'
 import { LocationType } from '@gamepark/reflection/material/LocationType'
 import { MaterialType } from '@gamepark/reflection/material/MaterialType'
 import { ItemContext, MaterialDescription, TokenDescription } from '@gamepark/react-game'
-import { MaterialItem, MaterialMove, MaterialRules } from '@gamepark/rules-api'
+import { isMoveItemType, MaterialItem, MaterialMove, MaterialRules } from '@gamepark/rules-api'
 import backslash from '../images/backslash.svg?no-inline'
 import blackHole from '../images/black-hole.svg?no-inline'
 import horizontal from '../images/horizontal.svg?no-inline'
@@ -79,15 +79,31 @@ class MirrorDescription extends TokenDescription {
    */
   getShortClickLocalMove(context: ItemContext) {
     if (!canPlay(context)) return
-    return context.rules.material(MaterialType.Mirror).index(context.index).selectItem()
+    const mirror = context.rules.material(MaterialType.Mirror).index(context.index)
+    if (!mirror.getItem()!.selected && !canPlace(context.rules, context.player!, mirror.getItem()!.id)) return
+    return mirror.selectItem()
   }
 }
 
 /**
- * The elements stay on display once the player is done, until they start the next round
+ * The elements stay on display once the player is done, until the end of the round
  */
-const canPlay = ({ rules, player }: ItemContext) =>
-  player !== undefined && rules.isTurnToPlay(player) && new PlayerPuzzleHelper(rules.game, player).hasStarted
+const canPlay = ({ rules, player }: ItemContext) => player !== undefined && isSolving(rules, player)
+
+export const isSolving = (rules: MaterialRules, player: PlayerColor) => {
+  const helper = new PlayerPuzzleHelper(rules.game, player)
+  return rules.isTurnToPlay(player) && helper.hasStarted && !helper.hasGivenUp
+}
+
+/**
+ * An element of the stock can be selected only if it can be placed: during the tutorial, only the element of the current step
+ */
+export const canPlace = (rules: MaterialRules, player: PlayerColor, id: number) =>
+  rules.getLegalMoves(player).some(move => {
+    if (!isMoveItemType(MaterialType.Mirror)(move)) return false
+    const mirror = rules.material(MaterialType.Mirror).getItem(move.itemIndex)
+    return mirror.id === id && mirror.location.type === LocationType.PlayerStock
+  })
 
 /**
  * The cells locked by the player, see SolvePuzzleRule

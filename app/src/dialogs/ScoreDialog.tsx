@@ -362,9 +362,11 @@ const figureCss = css`
   }
 `
 
-// One cell is 1em: the font size fits the grid and its clues in the dialog
+// One cell is 1em: the font size fits the grid and its clues in the dialog.
+// Centered below a caption wider than the grid.
 const miniGridCss = (size: number) => css`
   position: relative;
+  margin: 0 auto;
   font-size: min(2em, ${50 / (size + 2)}vw, ${50 / (size + 2)}vh);
   width: ${size + 2}em;
   height: ${size + 2}em;

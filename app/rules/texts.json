@@ -1,0 +1,22 @@
+{
+  "fr": {
+    "pdf.subtitle": "Un jeu pour 1 à 6 joueurs de Christophe Delaforge, d’après une idée originale de Jean-François Mainguet",
+    "pdf.options": "Options de partie",
+    "pdf.options.grid-size": "Taille de la grille : de 4×4 à 12×12.",
+    "pdf.options.items": "Nombre d’éléments : de 3 à 30.",
+    "pdf.options.black-holes": "Trous noirs et portails : avec ou sans.",
+    "pdf.options.special-shapes": "Formes spéciales : aucune, carrés, triangles, ou carrés et triangles.",
+    "pdf.options.time-limit": "Temps maximum pour résoudre une énigme : de 2 minutes à 1 heure.",
+    "pdf.options.rounds": "À plusieurs : 1, 3 ou 5 manches. En solo : le niveau du défi."
+  },
+  "en": {
+    "pdf.subtitle": "A game for 1 to 6 players by Christophe Delaforge, based on an original idea by Jean-François Mainguet",
+    "pdf.options": "Game options",
+    "pdf.options.grid-size": "Grid size: from 4×4 to 12×12.",
+    "pdf.options.items": "Number of items: from 3 to 30.",
+    "pdf.options.black-holes": "Black holes and light warps: with or without.",
+    "pdf.options.special-shapes": "Special shapes: none, squares, triangles, or squares and triangles.",
+    "pdf.options.time-limit": "Time limit to solve a puzzle: from 2 minutes to 1 hour.",
+    "pdf.options.rounds": "Multiplayer: 1, 3 or 5 rounds. Solo: the challenge level."
+  }
+}

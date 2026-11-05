@@ -10,6 +10,7 @@ import { useEffect } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { setShowSolution } from '../laser/laserSelection'
 import { getElements, useStockNavigation } from '../locators/PlayerStockLocator'
+import { canPlace } from '../material/Material'
 
 /**
  * One sentence: what the player must do. The progress, the times and the solution are beside the player panels.
@@ -24,6 +25,12 @@ export const SolvePuzzleHeader = () => {
   if (!new PlayerPuzzleHelper(rules.game, player).hasStarted) {
     const start = rules.material(MaterialType.Chrono).player(player).id(ChronoId.Start).rollItem()
     return <Trans i18nKey="header.start" components={{ start: <PlayMoveButton move={start} onPlay={() => setShowSolution(false)} /> }} />
+  }
+  // After a give up, the solution is on display until the player continues
+  if (new PlayerPuzzleHelper(rules.game, player).hasGivenUp) {
+    const continueMove = rules.customMove(CustomMoveType.Continue, player)
+    const key = rules.remind(Memory.GivingUp, player) ? 'header.gave-up' : 'header.time-up'
+    return <Trans i18nKey={key} components={{ continue: <PlayMoveButton move={continueMove} /> }} />
   }
   return <SolvingHeader player={player} />
 }
@@ -55,8 +62,8 @@ const SolvingHeader = ({ player }: { player: PlayerColor }) => {
   }, [timeUp])
   // An element is always selected while the stock is not empty: by default the top of the first pile
   const stock = new PlayerPuzzleHelper(rules.game, player).stock
-  const firstPile = getElements(rules, player).find(id => stock.id(id).length)
-  const firstPileTop = stock.selected().length || firstPile === undefined ? undefined : stock.id(firstPile).getIndexes().pop()
+  const firstPile = stock.selected().length ? undefined : getElements(rules, player).find(id => stock.id(id).length && canPlace(rules, player, id))
+  const firstPileTop = firstPile === undefined ? undefined : stock.id(firstPile).getIndexes().pop()
   useEffect(() => {
     if (firstPileTop !== undefined) play(rules.material(MaterialType.Mirror).index(firstPileTop).selectItem(), { local: true })
   }, [firstPileTop])

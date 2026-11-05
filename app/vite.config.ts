@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react-swc'
 import path from 'path'
 import { defineConfig, loadEnv, PluginOption } from 'vite'
@@ -60,6 +61,8 @@ export default defineConfig(({ mode }) => {
       'process.env.PUSHER_KEY': JSON.stringify(env.VITE_PUSHER_KEY),
       'process.env.VERSION': JSON.stringify(version)
     },
-    plugins: [react({ jsxImportSource: '@emotion/react' }), imagetools({ defaultDirectives: () => new URLSearchParams({ format: 'webp' }) }), translationHmrPlugin(), localeUrlPlugin()]
+    plugins: [react({ jsxImportSource: '@emotion/react' }), imagetools({ defaultDirectives: () => new URLSearchParams({ format: 'webp' }) }), translationHmrPlugin(), localeUrlPlugin()],
+    // @gamepark/rules-api uses directory imports that Node ESM cannot resolve: let Vite process it
+    test: { server: { deps: { inline: [/@gamepark/] } } }
   }
 })

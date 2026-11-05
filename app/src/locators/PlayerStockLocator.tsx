@@ -6,10 +6,11 @@ import { PlayerColor } from '@gamepark/reflection/PlayerColor'
 import { DropAreaDescription, ItemContext, Locator, MaterialContext, useDraggedItem, usePlay, usePlayerId, useRules } from '@gamepark/react-game'
 import { isMoveItemType, Location, MaterialItem, MaterialMove, MaterialRules } from '@gamepark/rules-api'
 import { uniq } from 'es-toolkit'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { getSettings } from '../dialogs/SettingsDialog'
 import { useShowSolution } from '../laser/laserSelection'
-import { elementImages } from '../material/Material'
+import { canPlace, elementImages } from '../material/Material'
+import { FocusHighlight } from './FocusHighlight'
 import { CELL, getGridSize, isPortrait, PILE_STEP, pilesPerLine } from './Layout'
 
 /**
@@ -63,7 +64,9 @@ export const getElements = (rules: MaterialRules, player: PlayerColor) =>
       .map(item => item.id as number)
   ).sort((a, b) => Number(a === Element.BlackHole) - Number(b === Element.BlackHole) || a - b)
 
-const steps: Record<string, number> = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }
+const NOTCH = 100
+
+const steps: Record<string, number> ={ ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }
 
 /**
  * The arrow keys and the mouse wheel over the table select the next pile of the stock, or the previous one, skipping the empty piles
@@ -71,13 +74,14 @@ const steps: Record<string, number> = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1
 export function useStockNavigation(player: PlayerColor) {
   const rules = useRules<MaterialRules>()!
   const play = usePlay()
+  // Kept across the renders: each selection renews the listeners
+  const wheel = useRef({ time: -Infinity, direction: 0, delta: 0 })
   useEffect(() => {
-    let lastWheel = 0
     const select = (step: number) => {
       const stock = getStock(rules, player)
       const selected = stock.selected().getItem()
       if (!selected) return false
-      const piles = getElements(rules, player).filter(id => stock.id(id).length)
+      const piles = getElements(rules, player).filter(id => stock.id(id).length && canPlace(rules, player, id))
       const next = piles[(piles.indexOf(selected.id) + step + piles.length) % piles.length]
       if (next !== selected.id) play(rules.material(MaterialType.Mirror).index(stock.id(next).getIndexes().pop()!).selectItem(), { local: true })
       return true
@@ -88,13 +92,21 @@ export function useStockNavigation(player: PlayerColor) {
       if (select(step)) event.preventDefault()
     }
     const onWheel = (event: WheelEvent) => {
-      if (!event.deltaY || !(event.target instanceof Element) || !event.target.closest('.wrapperClass')) return
+      if (!event.deltaY || !(event.target instanceof window.Element) || !event.target.closest('.wrapperClass')) return
       event.preventDefault()
       event.stopPropagation()
-      // A touchpad sends many events for one gesture
-      if (event.timeStamp - lastWheel < 150) return
-      lastWheel = event.timeStamp
-      select(event.deltaY > 0 ? 1 : -1)
+      // A touchpad, or a single notch of some wheels, sends many small events: the first event of a scroll selects the next pile,
+      // then one more pile for each notch of a usual wheel (100 pixels, or 3 lines)
+      const delta = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL ? event.deltaY : event.deltaY * 33
+      const direction = Math.sign(delta)
+      const state = wheel.current
+      const sameScroll = event.timeStamp - state.time < 300 && direction === state.direction
+      state.time = event.timeStamp
+      state.direction = direction
+      state.delta = sameScroll ? state.delta + Math.abs(delta) : NOTCH
+      if (state.delta < NOTCH) return
+      state.delta = 0
+      select(direction)
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('wheel', onWheel, { capture: true, passive: false })
@@ -111,7 +123,7 @@ export function useStockNavigation(player: PlayerColor) {
 class PileDescription extends DropAreaDescription {
   width = CELL
   height = CELL
-  content = PileCount
+  content = PileContent
   // Every pile accepts the dragged element: the shine effect of the framework would light up the whole stock, and cut the count badges
   extraCss = css`
     && {
@@ -136,6 +148,15 @@ class PileDescription extends DropAreaDescription {
   canLongClick() {
     return false
   }
+}
+
+function PileContent({ location }: { location: Location }) {
+  return (
+    <>
+      <PileCount location={location} />
+      <FocusHighlight location={location} />
+    </>
+  )
 }
 
 function PileCount({ location }: { location: Location }) {
@@ -180,6 +201,8 @@ const countCss = css`
   position: absolute;
   top: -0.4em;
   right: -0.4em;
+  /* Above the frame of the tutorial focus */
+  z-index: 2;
   min-width: 1.4em;
   height: 1.4em;
   border-radius: 0.7em;

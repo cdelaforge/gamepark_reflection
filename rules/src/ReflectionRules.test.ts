@@ -65,6 +65,9 @@ const play = (rules: ReflectionRules, player: PlayerColor, predicate: (move: Mov
 
 const giveUp = (move: Move) => isCustomMoveType(CustomMoveType.GiveUp)(move)
 
+// The player gives up, sees the solution, then continues
+const quit = (rules: ReflectionRules, player: PlayerColor) => [play(rules, player, giveUp), play(rules, player)]
+
 /**
  * The moves that place the elements of the solution, one by one
  */
@@ -83,6 +86,12 @@ const solutionMoves = (rules: ReflectionRules) =>
         : []
     )
   )
+
+// The moves of an action as the server sends them to a player
+const sentTo = ({ views }: ReturnType<typeof play>, player: PlayerColor) => {
+  const { action } = views.find(view => view.recipient === player)!
+  return [action.move, ...action.consequences]
+}
 
 const solve = (rules: ReflectionRules, player: PlayerColor) => solutionMoves(rules).map(predicate => play(rules, player, predicate))
 
@@ -122,15 +131,19 @@ describe('Reflection rules', () => {
     const rules = new ReflectionRules(newGame())
     at('10:00:00')
     play(rules, PlayerColor.Blue)
-    play(rules, PlayerColor.Blue, giveUp)
+    quit(rules, PlayerColor.Blue)
     play(rules, PlayerColor.Red)
     at('10:10:01')
     play(rules, PlayerColor.Red, move => isMoveItem(move))
+    play(rules, PlayerColor.Red)
 
     expect(rules.isOver()).toBe(true)
     expect(rules.getScore(PlayerColor.Blue)).toBe(-60)
     expect(rules.getScore(PlayerColor.Red)).toBe(-60)
     expect(rules.getTieBreaker(1, PlayerColor.Red)).toBe(-600)
+    // The panels tell a give up from a time out
+    expect(rules.remind(Memory.GivingUp, PlayerColor.Blue)).toBe(true)
+    expect(rules.remind(Memory.GivingUp, PlayerColor.Red)).toBeUndefined()
   })
 
   test('a locked cell keeps its element and refuses any other one, until it is unlocked', () => {
@@ -161,11 +174,15 @@ describe('Reflection rules', () => {
 
     // Blue leaves, their clock runs out, they are ejected and replaced by the platform random bot
     at('10:15:00')
-    const [botMove] = new RandomBot(ReflectionRules, PlayerColor.Blue).run(rules.game)
-    playAction(rules, botMove, PlayerColor.Blue)
+    for (let i = 0; i < 2; i++) {
+      const [botMove] = new RandomBot(ReflectionRules, PlayerColor.Blue).run(rules.game)
+      playAction(rules, botMove, PlayerColor.Blue)
+    }
 
     expect(rules.isOver()).toBe(true)
     expect(rules.getScore(PlayerColor.Blue)).toBe(-60)
+    // Even if the bot gives up, the clock ran out: a time out, not a give up
+    expect(rules.remind(Memory.GivingUp, PlayerColor.Blue)).toBeUndefined()
   })
 
   test('a new puzzle is revealed at each round', () => {
@@ -173,7 +190,7 @@ describe('Reflection rules', () => {
     at('10:00:00')
     for (const player of [PlayerColor.Blue, PlayerColor.Red]) {
       play(rules, player)
-      play(rules, player, giveUp)
+      quit(rules, player)
     }
 
     expect(rules.isOver()).toBe(false)
@@ -189,7 +206,7 @@ describe('Reflection rules', () => {
     const rules = new ReflectionRules(newGame(3))
     at('10:00:00')
     play(rules, PlayerColor.Red)
-    play(rules, PlayerColor.Red, giveUp)
+    quit(rules, PlayerColor.Red)
     play(rules, PlayerColor.Blue)
     at('10:01:23')
     solve(rules, PlayerColor.Blue)
@@ -214,13 +231,32 @@ describe('Reflection rules', () => {
     at('10:00:00')
     play(rules, PlayerColor.Blue)
     const redClient = new ReflectionRules(rules.getPlayerView(PlayerColor.Red), { player: PlayerColor.Red })
-    for (const action of [play(rules, PlayerColor.Blue, giveUp)]) {
-      for (const move of [action.move, ...action.consequences]) redClient.play(rules.getPlayerMoveView(move, PlayerColor.Red))
-    }
+    for (const move of sentTo(play(rules, PlayerColor.Blue, giveUp), PlayerColor.Red)) redClient.play(move)
     const blueView = new ReflectionRules(rules.getPlayerView(PlayerColor.Blue))
     expect(new PlayerPuzzleHelper(blueView.game, PlayerColor.Blue).solution).toEqual(solution)
     expect(new PlayerPuzzleHelper(redClient.game, PlayerColor.Blue).solution).toBeUndefined()
     expect(new PlayerPuzzleHelper(rules.getPlayerView(PlayerColor.Red), PlayerColor.Blue).solution).toBeUndefined()
+  })
+
+  test('after a give up, the round goes on until the player continues, then the previous grid is archived', () => {
+    const rules = new ReflectionRules(newGame(3))
+    at('10:00:00')
+    play(rules, PlayerColor.Red)
+    solve(rules, PlayerColor.Red)
+    play(rules, PlayerColor.Blue)
+    play(rules, PlayerColor.Blue, solutionMoves(rules)[0])
+    play(rules, PlayerColor.Blue, giveUp)
+
+    expect(rules.remind(Memory.Round)).toBe(1)
+    expect(new PlayerPuzzleHelper(rules.getPlayerView(PlayerColor.Red), PlayerColor.Blue).hasGivenUp).toBe(true)
+    expect(rules.getLegalMoves(PlayerColor.Blue)).toEqual([rules.customMove(CustomMoveType.Continue, PlayerColor.Blue)])
+    play(rules, PlayerColor.Blue)
+
+    expect(rules.remind(Memory.Round)).toBe(2)
+    const blue = new PlayerPuzzleHelper(rules.game, PlayerColor.Blue)
+    expect(blue.placedMirrors.length).toBe(0)
+    expect(blue.puzzle).toBeUndefined()
+    expect(blue.getRound(1).grid[0][1]).toBe(Element.Slash)
   })
 
   test('at the end of the game, every player can see the grids and the solutions of every round', () => {
@@ -229,7 +265,7 @@ describe('Reflection rules', () => {
     const redClient = new ReflectionRules(JSON.parse(JSON.stringify(rules.getPlayerView(PlayerColor.Red))), { player: PlayerColor.Red })
     at('10:00:00')
     for (let round = 1; round <= 3; round++) {
-      const actions = [play(rules, PlayerColor.Blue), ...solve(rules, PlayerColor.Blue), play(rules, PlayerColor.Red), play(rules, PlayerColor.Red, giveUp)]
+      const actions = [play(rules, PlayerColor.Blue), ...solve(rules, PlayerColor.Blue), play(rules, PlayerColor.Red), ...quit(rules, PlayerColor.Red)]
       for (const { views } of actions) {
         const { move, consequences } = views.find(view => view.recipient === PlayerColor.Red)!.action
         for (const moveView of [move, ...consequences]) redClient.play(moveView)
@@ -284,7 +320,7 @@ describe('Reflection rules', () => {
     expect(secrets).toHaveLength(0)
     expect(redClient.material(MaterialType.Mirror).location(LocationType.PlayerGrid).length).toBe(3)
     send(play(rules, PlayerColor.Red))
-    send(play(rules, PlayerColor.Red, giveUp))
+    for (const action of quit(rules, PlayerColor.Red)) send(action)
     expect(redClient.isOver()).toBe(true)
     expect(redClient.game.memory).toEqual(rules.game.memory)
   })
@@ -310,9 +346,7 @@ describe('Reflection rules', () => {
     play(rules, PlayerColor.Blue)
     const redClient = new ReflectionRules(rules.getPlayerView(PlayerColor.Red), { player: PlayerColor.Red })
     for (const action of solve(rules, PlayerColor.Blue)) {
-      for (const move of [action.move, ...action.consequences]) {
-        expect(() => redClient.play(rules.getPlayerMoveView(move, PlayerColor.Red))).not.toThrow()
-      }
+      for (const move of sentTo(action, PlayerColor.Red)) expect(() => redClient.play(move)).not.toThrow()
     }
     expect(redClient.isTurnToPlay(PlayerColor.Blue)).toBe(false)
   })
@@ -391,7 +425,7 @@ describe('Reflection rules', () => {
   describe('solo challenge', () => {
     const fail = (rules: ReflectionRules) => {
       play(rules, PlayerColor.Blue)
-      play(rules, PlayerColor.Blue, giveUp)
+      quit(rules, PlayerColor.Blue)
     }
     const succeed = (rules: ReflectionRules) => {
       play(rules, PlayerColor.Blue)

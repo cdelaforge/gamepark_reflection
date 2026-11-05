@@ -39,8 +39,13 @@ export class PlayerPuzzleHelper extends MaterialRulesPart<PlayerColor, MaterialT
   }
 
   /**
-   * The previous round stays on display until the player starts the current one
+   * The player gave up, or ran out of time: the solution is on display until they continue.
+   * Known by every player: only the content of the solution is hidden.
    */
+  get hasGivenUp() {
+    return this.material(MaterialType.Solution).location(LocationType.PlayerPuzzle).player(this.player).length > 0
+  }
+
   get hasStarted() {
     return this.material(MaterialType.Puzzle).location(LocationType.PlayerPuzzle).player(this.player).locationId(this.remind(Memory.Round)).length > 0
   }

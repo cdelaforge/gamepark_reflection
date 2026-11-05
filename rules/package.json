@@ -9,7 +9,7 @@
   "files": [
     "dist"
   ],
-  "author": "Romain Fromi <romain@game-park.com> (https://game-park.com/)",
+  "author": "Christophe Delaforge",
   "license": "ISC",
   "publishConfig": {
     "access": "public"

@@ -36,6 +36,7 @@ export class SolvePuzzleRule extends SimultaneousRule<PlayerColor, MaterialType,
   getActivePlayerLegalMoves(player: PlayerColor) {
     const helper = new PlayerPuzzleHelper(this.game, player)
     if (!helper.hasStarted) return [this.chrono(player, ChronoId.Start).rollItem()]
+    if (helper.hasGivenUp) return [this.customMove(CustomMoveType.Continue, player)]
     // Every cell but the portals and the locked cells: an element dropped on an occupied cell sends its element back to the stock
     const locked = this.isLocked(player)
     const cells = helper.grid.flatMap((row, y) =>
@@ -108,15 +109,12 @@ export class SolvePuzzleRule extends SimultaneousRule<PlayerColor, MaterialType,
     if (top !== undefined) mirrors.getItem(top).selected = true
   }
 
-  /**
-   * The previous round stayed on display (to see the time or the solution): it is archived before the new puzzle is revealed
-   */
   revealPuzzle(player: PlayerColor) {
     this.forget(Memory.Duration, player)
+    this.forget(Memory.GivingUp, player)
     this.forget(Memory.Locks, player)
     const round = this.remind<number>(Memory.Round)
     return [
-      ...this.archiveRound(player, round - 1),
       this.material(MaterialType.Puzzle).location(LocationType.PuzzleDeck).locationId(round).player(player).moveItem({ type: LocationType.PlayerPuzzle, player, id: round }),
       this.material(MaterialType.Mirror).location(LocationType.MirrorDeck).locationId(round).player(player).moveItemsAtOnce({ type: LocationType.PlayerStock, player })
     ]
@@ -143,9 +141,12 @@ export class SolvePuzzleRule extends SimultaneousRule<PlayerColor, MaterialType,
 
   checkPlayer(player: PlayerColor, now: number) {
     const elapsed = now - this.chrono(player, ChronoId.Start).getItem()!.location.rotation
-    if (elapsed > this.remind<number>(Memory.TimeLimit) * 60 || this.remind(Memory.GivingUp, player)) {
+    // Past the time limit, the player lost even if they asked to give up: GivingUp is kept until the next round only for a real give up
+    if (elapsed > this.remind<number>(Memory.TimeLimit) * 60) {
+      this.forget(Memory.GivingUp, player)
       return [this.customMove(CustomMoveType.GaveUp, player)]
     }
+    if (this.remind(Memory.GivingUp, player)) return [this.customMove(CustomMoveType.GaveUp, player)]
     // The puzzle is hidden to the other players: only the server and the player can tell it is solved
     const helper = new PlayerPuzzleHelper(this.game, player)
     const puzzle = helper.puzzle
@@ -178,14 +179,13 @@ export class SolvePuzzleRule extends SimultaneousRule<PlayerColor, MaterialType,
         this.memorize(Memory.Duration, duration, player)
         return [this.endPlayerTurn(player)]
       }
+      // The player sees the solution, and is done once they continue
       case CustomMoveType.GaveUp: {
-        this.forget(Memory.GivingUp, move.data)
         const round = this.remind<number>(Memory.Round)
-        return [
-          this.material(MaterialType.Solution).location(LocationType.PuzzleDeck).locationId(round).player(move.data).moveItem({ type: LocationType.PlayerPuzzle, player: move.data }),
-          this.endPlayerTurn(move.data)
-        ]
+        return [this.material(MaterialType.Solution).location(LocationType.PuzzleDeck).locationId(round).player(move.data).moveItem({ type: LocationType.PlayerPuzzle, player: move.data })]
       }
+      case CustomMoveType.Continue:
+        return [this.endPlayerTurn(move.data)]
     }
     return []
   }
@@ -194,12 +194,14 @@ export class SolvePuzzleRule extends SimultaneousRule<PlayerColor, MaterialType,
     const challenge = this.remind<Challenge | undefined>(Memory.Challenge)
     if (challenge) this.scoreChallenge(challenges[challenge].goal)
     else this.scoreRound()
+    // The grids of the round are archived: the previous grid would be misleading while the players get ready for the next one
     const round = this.remind<number>(Memory.Round)
+    const archive = this.game.players.flatMap(player => this.archiveRound(player, round))
     if (round === this.remind<number>(Memory.Rounds) || (challenge && this.isChallengeOver(challenges[challenge].goal))) {
-      return [...this.game.players.flatMap(player => this.archiveRound(player, round)), this.endGame()]
+      return [...archive, this.endGame()]
     }
     this.memorize(Memory.Round, round + 1)
-    return [this.startSimultaneousRule(RuleId.SolvePuzzle)]
+    return [...archive, this.startSimultaneousRule(RuleId.SolvePuzzle)]
   }
 
   /**

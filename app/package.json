@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "The user interface of Reflection adaptation for Game Park",
-  "author": "Romain Fromi <romain@game-park.com> (https://game-park.com/)",
+  "author": "Christophe Delaforge",
   "license": "ISC",
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "rules-pdf": "node rules/print.mjs",
     "upload-sourcemaps": "datadog-ci sourcemaps upload dist/assets --service=reflection --release-version=$npm_package_version --minified-path-prefix=/assets/",
     "sync": "npx rimraf dist/assets/*.map && rclone sync dist reflection:reflection.game-park.com --progress --s3-acl=public-read",
     "deploy": "yarn build && node -e \"if(process.env.DATADOG_API_KEY){require('child_process').execSync('yarn upload-sourcemaps',{stdio:'inherit'})}\" && yarn sync"

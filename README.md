@@ -1,15 +1,18 @@
 # Reflection - Game Park
 
-Template to adapt board games for [Game Park](https://game-park.com/).
+Adaptation of Reflection for [Game Park](https://game-park.com/): a puzzle game for 1 to 6 players by Christophe Delaforge,
+based on an original idea by Jean-François Mainguet. Place items on a randomly generated grid so that the path of each
+laser matches the clues on the edge; the fastest player wins.
+
+Rules: [French](app/public/rules-fr.pdf), [English](app/public/rules-en.pdf).
 
 ## Documentation
 
-**Full documentation: [gamepark.github.io](https://gamepark.github.io)**
+**Game Park framework documentation: [gamepark.github.io](https://gamepark.github.io)**
 
 ## Prerequisites
 
-- Agreement with Game Park for the game to adapt
-- [Git](https://git-scm.com/) and [GitHub](https://github.com/) account
+- [Git](https://git-scm.com/)
 - [Node.js](https://nodejs.org/) and [Yarn](https://yarnpkg.com/)
 
 ## Quick Start
@@ -29,24 +32,29 @@ game.monkeyOpponents(true) // Opponents play automatically
 game.undo()               // Undo last move
 ```
 
-## Project Setup
+## Scripts
 
-Search and replace in all files:
+| Command          | Purpose                                                                          |
+|------------------|----------------------------------------------------------------------------------|
+| `yarn test`      | Tests of the rules and the app                                                   |
+| `yarn lint`      | ESLint on the rules and the app                                                  |
+| `yarn rules-pdf` | Prints `app/public/rules-<lang>.pdf` from `app/rules/rules.html` (Chrome or Edge) |
+| `yarn publish`   | Publishes the rules package `@gamepark/reflection` on npm                        |
+| `yarn deploy`    | Builds and uploads the app                                                       |
 
-- `Game Template` → `Your Game Name`
-- `GameTemplate` → `YourGameName`
-- `game-template` → `your-game-name`
+The rules PDFs take their texts from `app/public/translation/<lang>.json` and `app/rules/texts.json`. Outside the usual
+Windows paths, set `CHROME` to the browser executable.
 
 ## Deployment
 
 Rules are deployed by the Game Park team.
 
-To deploy the React app, install [rclone](https://rclone.org/) then configure:
+To deploy the React app, install [rclone](https://rclone.org/) then configure, with the keys provided by Game Park:
 
 ```
 rclone config
 > n
-name> game-template
+name> reflection
 Storage> s3
 provider> Other
 env_auth> false
