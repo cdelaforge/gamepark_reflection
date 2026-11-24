@@ -1,17 +1,16 @@
 import { css } from '@emotion/react'
-import { Element } from '@gamepark/reflection/material/Element'
 import { LocationType } from '@gamepark/reflection/material/LocationType'
 import { MaterialType } from '@gamepark/reflection/material/MaterialType'
 import { PlayerColor } from '@gamepark/reflection/PlayerColor'
-import { DropAreaDescription, ItemContext, Locator, MaterialContext, useDraggedItem, usePlay, usePlayerId, useRules } from '@gamepark/react-game'
+import { DropAreaDescription, ItemContext, Locator, MaterialContext, useDraggedItem, usePlayerId, useRules } from '@gamepark/react-game'
 import { isMoveItemType, Location, MaterialItem, MaterialMove, MaterialRules } from '@gamepark/rules-api'
-import { uniq } from 'es-toolkit'
 import { useEffect, useRef } from 'react'
 import { getSettings } from '../dialogs/SettingsDialog'
 import { useShowSolution } from '../laser/laserSelection'
-import { canPlace, elementImages } from '../material/Material'
+import { elementImages } from '../material/Material'
 import { FocusHighlight } from './FocusHighlight'
 import { CELL, getGridSize, isPortrait, PILE_STEP, pilesPerLine } from './Layout'
+import { getElements, getSelectablePiles, getSelectedPile, getStock, selectPile, useSelectedPile } from './stockSelection'
 
 /**
  * The elements still to place, beside the grid, or above or below it: one pile per element, with the number of elements left.
@@ -48,43 +47,33 @@ class PlayerStockLocator extends Locator {
   }
 }
 
-const getStock = (rules: MaterialRules, player: PlayerColor) =>
-  rules.material(MaterialType.Mirror).location(LocationType.PlayerStock).player(player)
-
-/**
- * The elements of the round, in the stock or on the grid, the black hole last
- */
-export const getElements = (rules: MaterialRules, player: PlayerColor) =>
-  uniq(
-    rules
-      .material(MaterialType.Mirror)
-      .player(player)
-      .location(({ type }) => type === LocationType.PlayerStock || type === LocationType.PlayerGrid)
-      .getItems()
-      .map(item => item.id as number)
-  ).sort((a, b) => Number(a === Element.BlackHole) - Number(b === Element.BlackHole) || a - b)
-
 const NOTCH = 100
 
 const steps: Record<string, number> ={ ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }
 
 /**
- * The arrow keys and the mouse wheel over the table select the next pile of the stock, or the previous one, skipping the empty piles
+ * The arrow keys and the mouse wheel over the table select the next pile of the stock, or the previous one, skipping the empty piles.
+ * A click on a pile selects it: the pile is found by its position, its elements receive the pointer events (they can be dragged).
  */
 export function useStockNavigation(player: PlayerColor) {
   const rules = useRules<MaterialRules>()!
-  const play = usePlay()
-  // Kept across the renders: each selection renews the listeners
+  // Kept across the renders: each move renews the listeners
   const wheel = useRef({ time: -Infinity, direction: 0, delta: 0 })
   useEffect(() => {
     const select = (step: number) => {
-      const stock = getStock(rules, player)
-      const selected = stock.selected().getItem()
-      if (!selected) return false
-      const piles = getElements(rules, player).filter(id => stock.id(id).length && canPlace(rules, player, id))
-      const next = piles[(piles.indexOf(selected.id) + step + piles.length) % piles.length]
-      if (next !== selected.id) play(rules.material(MaterialType.Mirror).index(stock.id(next).getIndexes().pop()!).selectItem(), { local: true })
+      const selected = getSelectedPile(rules, player)
+      if (selected === undefined) return false
+      const piles = getSelectablePiles(rules, player)
+      selectPile(rules, piles[(piles.indexOf(selected) + step + piles.length) % piles.length])
       return true
+    }
+    const onClick = (event: MouseEvent) => {
+      const pile = [...document.querySelectorAll<HTMLElement>('[data-pile]')].find(pile => {
+        const { left, right, top, bottom } = pile.getBoundingClientRect()
+        return event.clientX >= left && event.clientX < right && event.clientY >= top && event.clientY < bottom
+      })
+      const id = Number(pile?.dataset.pile)
+      if (pile && getSelectablePiles(rules, player).includes(id)) selectPile(rules, id)
     }
     const onKey = (event: KeyboardEvent) => {
       const step = steps[event.key]
@@ -110,11 +99,13 @@ export function useStockNavigation(player: PlayerColor) {
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('wheel', onWheel, { capture: true, passive: false })
+    document.addEventListener('click', onClick)
     return () => {
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('wheel', onWheel, { capture: true })
+      document.removeEventListener('click', onClick)
     }
-  }, [rules, player, play])
+  }, [rules, player])
 }
 
 /**
@@ -153,11 +144,32 @@ class PileDescription extends DropAreaDescription {
 function PileContent({ location }: { location: Location }) {
   return (
     <>
+      <PileSelection location={location} />
       <PileCount location={location} />
       <FocusHighlight location={location} />
     </>
   )
 }
+
+/**
+ * The golden outline of the selected pile. Also marks the pile, so that a click is found on it (see useStockNavigation).
+ */
+function PileSelection({ location }: { location: Location }) {
+  const rules = useRules<MaterialRules>()
+  const player = usePlayerId<PlayerColor>()
+  const selected = useSelectedPile(rules, player) === location.id
+  return <div data-pile={location.id} css={[pileCss, selected && selectedCss]} />
+}
+
+const pileCss = css`
+  position: absolute;
+  inset: 0;
+`
+
+const selectedCss = css`
+  outline: 0.2em solid #ffd700;
+  box-shadow: 0 0 0.6em 0.2em #ffd700;
+`
 
 function PileCount({ location }: { location: Location }) {
   const rules = useRules<MaterialRules>()

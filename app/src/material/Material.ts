@@ -2,13 +2,11 @@ import { css } from '@emotion/react'
 import { faLock, IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { Element } from '@gamepark/reflection/material/Element'
 import { PlayerColor } from '@gamepark/reflection/PlayerColor'
-import { Memory } from '@gamepark/reflection/rules/Memory'
 import { PlayerPuzzleHelper } from '@gamepark/reflection/rules/PlayerPuzzleHelper'
-import { Lock } from '@gamepark/reflection/rules/SolvePuzzleRule'
 import { LocationType } from '@gamepark/reflection/material/LocationType'
 import { MaterialType } from '@gamepark/reflection/material/MaterialType'
 import { ItemContext, MaterialDescription, TokenDescription } from '@gamepark/react-game'
-import { isMoveItemType, MaterialItem, MaterialMove, MaterialRules } from '@gamepark/rules-api'
+import { isMoveItemType, MaterialGame, MaterialItem, MaterialMove, MaterialRules } from '@gamepark/rules-api'
 import backslash from '../images/backslash.svg?no-inline'
 import blackHole from '../images/black-hole.svg?no-inline'
 import horizontal from '../images/horizontal.svg?no-inline'
@@ -44,14 +42,14 @@ class MirrorDescription extends TokenDescription {
     `
   }
 
-  // Every element can be moved: no shine effect, the selected element gets a golden outline instead
+  // Every element can be moved: no shine effect, the selected pile gets a golden outline instead (see stockSelection)
   highlight() {
     return false
   }
 
-  // A dragged element is slightly transparent, without the selection outline. An element on a locked cell shows the padlock.
+  // A dragged element is slightly transparent. An element on a locked cell shows the padlock.
   getItemExtraCss(item: MaterialItem, context: ItemContext) {
-    return [noTransitionCss, context.isDragging ? draggingCss : item.selected && selectedCss, isOnLockedCell(item, context) && lockedCss]
+    return [noTransitionCss, context.isDragging && draggingCss, isOnLockedCell(item, context) && lockedCss]
   }
 
   // An element goes back to the stock without a pile id: the piles accept it, the framework must not add a pile for this location
@@ -73,16 +71,6 @@ class MirrorDescription extends TokenDescription {
     if (item.location.type !== LocationType.PlayerGrid || !canPlay(context) || isOnLockedCell(item, context)) return
     return mirrors.index(context.index).moveItem({ type: LocationType.PlayerStock, player: item.location.player })
   }
-
-  /**
-   * A click on an element of the stock selects it (a click on the selected element unselects it)
-   */
-  getShortClickLocalMove(context: ItemContext) {
-    if (!canPlay(context)) return
-    const mirror = context.rules.material(MaterialType.Mirror).index(context.index)
-    if (!mirror.getItem()!.selected && !canPlace(context.rules, context.player!, mirror.getItem()!.id)) return
-    return mirror.selectItem()
-  }
 }
 
 /**
@@ -96,20 +84,27 @@ export const isSolving = (rules: MaterialRules, player: PlayerColor) => {
 }
 
 /**
- * An element of the stock can be selected only if it can be placed: during the tutorial, only the element of the current step
+ * The elements of the stock that can be placed: during the tutorial, only the element of the current step
  */
-export const canPlace = (rules: MaterialRules, player: PlayerColor, id: number) =>
-  rules.getLegalMoves(player).some(move => {
-    if (!isMoveItemType(MaterialType.Mirror)(move)) return false
-    const mirror = rules.material(MaterialType.Mirror).getItem(move.itemIndex)
-    return mirror.id === id && mirror.location.type === LocationType.PlayerStock
-  })
+export const getPlaceableElements = (rules: MaterialRules, player: PlayerColor) => {
+  // Each element asks for it at each render: computed once per state of the game (the states of the store are immutable)
+  if (placeable?.game !== rules.game || placeable.player !== player) {
+    const mirrors = rules.game.items[MaterialType.Mirror]!
+    const ids = rules.getLegalMoves(player).flatMap(move =>
+      isMoveItemType(MaterialType.Mirror)(move) && mirrors[move.itemIndex].location.type === LocationType.PlayerStock ? [mirrors[move.itemIndex].id as number] : []
+    )
+    placeable = { game: rules.game, player, ids: new Set(ids) }
+  }
+  return placeable.ids
+}
+
+let placeable: { game: MaterialGame; player: PlayerColor; ids: Set<number> } | undefined
 
 /**
  * The cells locked by the player, see SolvePuzzleRule
  */
 export const isLocked = (rules: MaterialRules, player: PlayerColor, x: number, y: number) =>
-  !!rules.remind<Lock[] | undefined>(Memory.Locks, player)?.some(lock => lock.x === x && lock.y === y)
+  new PlayerPuzzleHelper(rules.game, player).isLocked(x, y)
 
 const isOnLockedCell = ({ location }: MaterialItem, { rules }: ItemContext) =>
   location.type === LocationType.PlayerGrid && isLocked(rules, location.player!, location.x!, location.y!)
@@ -140,11 +135,6 @@ const lockedCss = css`
     content: '';
     ${lockCss};
   }
-`
-
-const selectedCss = css`
-  outline: 0.2em solid #ffd700;
-  box-shadow: 0 0 0.6em 0.2em #ffd700;
 `
 
 // A speed game: the framework slides the elements to their new place, they jump there instead

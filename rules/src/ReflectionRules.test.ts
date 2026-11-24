@@ -1,5 +1,4 @@
 import {
-  applyAutomaticMoves,
   CustomMove,
   isCustomMoveType,
   isMoveItem,
@@ -144,6 +143,17 @@ describe('Reflection rules', () => {
     // The panels tell a give up from a time out
     expect(rules.remind(Memory.GivingUp, PlayerColor.Blue)).toBe(true)
     expect(rules.remind(Memory.GivingUp, PlayerColor.Red)).toBeUndefined()
+  })
+
+  test('the automatic give up sent when the countdown reaches 0:00 is a time out, not a give up', () => {
+    const rules = new ReflectionRules(newGame())
+    at('10:00:00')
+    play(rules, PlayerColor.Blue)
+    // Sent at the time limit, received by the server within the same second
+    at('10:10:00.300')
+    play(rules, PlayerColor.Blue, giveUp)
+    expect(new PlayerPuzzleHelper(rules.game, PlayerColor.Blue).hasGivenUp).toBe(true)
+    expect(rules.remind(Memory.GivingUp, PlayerColor.Blue)).toBeUndefined()
   })
 
   test('a locked cell keeps its element and refuses any other one, until it is unlocked', () => {
@@ -351,44 +361,6 @@ describe('Reflection rules', () => {
     expect(redClient.isTurnToPlay(PlayerColor.Blue)).toBe(false)
   })
 
-  test('only one element is selected at a time', () => {
-    const rules = new ReflectionRules(newGame())
-    at('10:00:00')
-    play(rules, PlayerColor.Blue)
-    const [first, second] = rules.material(MaterialType.Mirror).location(LocationType.PlayerStock).player(PlayerColor.Blue).getIndexes()
-    for (const index of [first, second]) {
-      applyAutomaticMoves(rules, [rules.material(MaterialType.Mirror).index(index).selectItem()], undefined, { local: true })
-    }
-    expect(rules.material(MaterialType.Mirror).selected().getIndexes()).toEqual([second])
-    // Dragging an element of another pile selects its pile (here emptied: nothing is selected)
-    play(rules, PlayerColor.Blue, move => isMoveItem(move) && move.itemIndex === first)
-    expect(rules.material(MaterialType.Mirror).selected().length).toBe(0)
-  })
-
-  test('the selection follows the moves: next element of the same pile, then the element sent back to the stock', () => {
-    const game = newGame()
-    game.items[MaterialType.Mirror]!.forEach(mirror => (mirror.id = Element.Slash))
-    const rules = new ReflectionRules(game)
-    at('10:00:00')
-    play(rules, PlayerColor.Blue)
-    const stock = () => rules.material(MaterialType.Mirror).location(LocationType.PlayerStock).player(PlayerColor.Blue)
-    const [, second, top] = stock().getIndexes()
-    applyAutomaticMoves(rules, [rules.material(MaterialType.Mirror).index(top).selectItem()], undefined, { local: true })
-    play(rules, PlayerColor.Blue, move => isMoveItem(move) && move.itemIndex === top && move.location.type === LocationType.PlayerGrid)
-    expect(rules.material(MaterialType.Mirror).selected().getIndexes()).toEqual([second])
-    play(rules, PlayerColor.Blue, move => isMoveItem(move) && move.itemIndex === top && move.location.type === LocationType.PlayerStock)
-    expect(rules.material(MaterialType.Mirror).selected().getIndexes()).toEqual([top])
-
-    // Moving an element inside the grid keeps the selection
-    play(rules, PlayerColor.Blue, move => isMoveItem(move) && move.itemIndex === top && move.location.type === LocationType.PlayerGrid)
-    play(rules, PlayerColor.Blue, move => isMoveItem(move) && move.itemIndex === top && move.location.type === LocationType.PlayerGrid)
-    expect(rules.material(MaterialType.Mirror).selected().getIndexes()).toEqual([second])
-
-    // Once the player is done, nothing stays selected
-    play(rules, PlayerColor.Blue, giveUp)
-    expect(rules.material(MaterialType.Mirror).selected().length).toBe(0)
-  })
-
   test('an element dropped on an occupied cell sends its element back to the stock', () => {
     const rules = new ReflectionRules(newGame())
     at('10:00:00')
@@ -411,6 +383,37 @@ describe('Reflection rules', () => {
     play(rules, PlayerColor.Blue, moveTo(square, cell(1, 1)))
     expect(location(square)).toMatchObject({ x: 1, y: 1 })
     expect(location(slash).type).toBe(LocationType.PlayerStock)
+  })
+
+  // The element sent back to the stock is a move too: the chrono is rolled twice, the player must be checked once
+  test('an element dropped on an occupied cell after the time limit is a single give up', () => {
+    const rules = new ReflectionRules(newGame())
+    at('10:00:00')
+    play(rules, PlayerColor.Blue)
+    const toCell = (move: Move) => isMoveItem(move) && move.location.type === LocationType.PlayerGrid && move.location.x === 0 && move.location.y === 0
+    play(rules, PlayerColor.Blue, toCell)
+    at('10:10:01')
+    const action = play(rules, PlayerColor.Blue, toCell)
+    expect(action.consequences.filter(isCustomMoveType(CustomMoveType.GaveUp))).toHaveLength(1)
+    expect(new PlayerPuzzleHelper(rules.game, PlayerColor.Blue).hasGivenUp).toBe(true)
+  })
+
+  test('a grid solved by dropping an element on an occupied cell is solved once', () => {
+    const game = newGame()
+    // A spare element, sent back to the stock by the last move (only the top of a pile can be moved: the highest index first)
+    game.items[MaterialType.Mirror]!.push({ id: Element.Slash, location: { type: LocationType.MirrorDeck, id: 1, player: PlayerColor.Blue } })
+    const rules = new ReflectionRules(game)
+    at('10:00:00')
+    play(rules, PlayerColor.Blue)
+    const [spare, slash] = rules.material(MaterialType.Mirror).location(LocationType.PlayerStock).player(PlayerColor.Blue).id(Element.Slash).getIndexes()
+    const drop = (x: number, y: number, predicate: (index: number) => boolean) => (move: Move) =>
+      isMoveItem(move) && move.location.type === LocationType.PlayerGrid && move.location.x === x && move.location.y === y && predicate(move.itemIndex)
+    const is = (element: Element) => (index: number) => rules.material(MaterialType.Mirror).getItem(index).id === element
+    play(rules, PlayerColor.Blue, drop(1, 0, index => index === slash))
+    play(rules, PlayerColor.Blue, drop(2, 2, is(Element.BackSlash)))
+    play(rules, PlayerColor.Blue, drop(0, 3, index => index === spare))
+    const action = play(rules, PlayerColor.Blue, drop(0, 3, is(Element.Square)))
+    expect(action.consequences.filter(isCustomMoveType(CustomMoveType.Solved))).toHaveLength(1)
   })
 
   test('a solved grid is announced with a custom move every client can apply', () => {

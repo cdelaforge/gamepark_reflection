@@ -5,7 +5,7 @@ import { PlayerColor } from '@gamepark/reflection/PlayerColor'
 import { CustomMoveType } from '@gamepark/reflection/rules/CustomMoveType'
 import { Lock } from '@gamepark/reflection/rules/SolvePuzzleRule'
 import { DropAreaDescription, ItemContext, LocationContext, Locator, MaterialContext, usePlay, usePlayerId, useRules } from '@gamepark/react-game'
-import { isMoveItemType, Location, MaterialItem, MaterialMove, MaterialMoveBuilder, MaterialRules, MoveItem } from '@gamepark/rules-api'
+import { isMoveItemType, Location, MaterialItem, MaterialMove, MaterialMoveBuilder, MaterialRules } from '@gamepark/rules-api'
 import { useEffect } from 'react'
 import { useSettings } from '../dialogs/SettingsDialog'
 import portal from '../images/portal.svg?no-inline'
@@ -13,6 +13,7 @@ import { getDisplayedRound } from '../laser/laserSelection'
 import { elementImages, isLocked, isSolving, lockCss } from '../material/Material'
 import { FocusHighlight } from './FocusHighlight'
 import { CELL, cellCoordinates, getGridSize } from './Layout'
+import { getSelectedPile, getStock, useSelectedPile } from './stockSelection'
 
 /**
  * The grid of the player: only the player's own grid is displayed.
@@ -49,9 +50,15 @@ class GridCellDescription extends DropAreaDescription {
       display: none;
     }
 
-    /* The framework lights up a clickable location with a transparent white: the cell would show the background */
-    &&:hover {
+    /* A click on an empty cell places the selected element, decided when clicked (see GridCellElement): the cells are not clickable
+       for the framework, which would let the pointer events through them */
+    && {
+      pointer-events: auto;
+    }
+
+    &&:has([data-clickable]):hover {
       background-color: #6a6d80;
+      cursor: pointer;
     }
 
     &:hover .preview {
@@ -70,14 +77,6 @@ class GridCellDescription extends DropAreaDescription {
     return super.getLocationTransform(location, { ...context, canDrop: false })
   }
 
-  /**
-   * A click on an empty cell places the selected element.
-   * Called for each cell and each legal move: the cheap location test comes first.
-   */
-  canShortClick(move: MaterialMove, location: Location, context: MaterialContext) {
-    return this.isMoveToLocation(move, location) && !!context.rules.game.items[MaterialType.Mirror]![(move as MoveItem).itemIndex].selected
-  }
-
   // Called for each cell and each legal move: the generic location comparison of the framework is too slow on big grids
   isMoveToLocation(move: MaterialMove, location: Location) {
     return isMoveItemType(MaterialType.Mirror)(move) && move.location.x === location.x && move.location.y === location.y && move.location.type === location.type
@@ -94,27 +93,47 @@ function GridCellContent({ location }: { location: Location }) {
 }
 
 /**
- * A portal, or on an empty cell, the preview of the element selected in the stock when the mouse is over the cell
+ * A portal, or on an empty cell, the preview of the element selected in the stock when the mouse is over the cell.
+ * A click on an empty cell places the element on top of the selected pile.
  */
 function GridCellElement({ location }: { location: Location }) {
   const rules = useRules<MaterialRules>()
   const player = usePlayerId<PlayerColor>()
-  const { hoverPreview } = useSettings()
+  const play = usePlay()
   if (!rules) return null
   const { x, y } = location as { x: number; y: number }
   const portals = getDisplayedRound(rules, player)?.puzzle?.portals ?? []
   if (portals.some(cell => cell.col === x && cell.row === y)) return <img src={portal} alt="" css={fullSize} />
   if (player === undefined || !isSolving(rules, player)) return null
   const locked = isLocked(rules, player, x, y)
-  const mirrors = rules.material(MaterialType.Mirror).player(player)
-  const empty = !mirrors.location(LocationType.PlayerGrid).filter(({ location }) => location.x === x && location.y === y).length
-  const selected = mirrors.location(LocationType.PlayerStock).selected().getItem()
+  const empty = !rules.material(MaterialType.Mirror).player(player).location(LocationType.PlayerGrid).filter(({ location }) => location.x === x && location.y === y).length
+  const place = () => {
+    // The selection is read when clicked: it is not part of the state of the game
+    const pile = getSelectedPile(rules, player)
+    const top = pile === undefined ? undefined : getStock(rules, player).id(pile).getIndexes().pop()
+    const move = rules.getLegalMoves(player).find(move => isMoveItemType(MaterialType.Mirror)(move) && move.itemIndex === top && move.location.x === x && move.location.y === y)
+    if (move) play(move)
+  }
   return (
-    <div css={fullSize} data-cell={`${x},${y}`}>
-      {hoverPreview && empty && !locked && selected && <img src={elementImages[selected.id]} alt="" className="preview" css={[fullSize, previewCss]} />}
+    <div css={fullSize} data-cell={`${x},${y}`} onClick={empty && !locked ? place : undefined}>
+      {empty && !locked && <CellPreview />}
       {locked && <div css={lockCss} />}
     </div>
   )
+}
+
+/**
+ * The selected element, shown when the mouse is over the empty cell. Marks the cell as clickable while an element is selected.
+ * Only this part renders again when the selection changes.
+ */
+function CellPreview() {
+  const rules = useRules<MaterialRules>()
+  const player = usePlayerId<PlayerColor>()
+  const { hoverPreview } = useSettings()
+  const selected = useSelectedPile(rules, player)
+  if (selected === undefined) return null
+  if (!hoverPreview) return <div data-clickable />
+  return <img src={elementImages[selected]} alt="" className="preview" data-clickable css={[fullSize, previewCss]} />
 }
 
 const LONG_PRESS = 600

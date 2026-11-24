@@ -6,11 +6,11 @@ import { Memory } from '@gamepark/reflection/rules/Memory'
 import { PlayerPuzzleHelper } from '@gamepark/reflection/rules/PlayerPuzzleHelper'
 import { PlayMoveButton, useNow, usePlay, usePlayerId, useRules } from '@gamepark/react-game'
 import { MaterialRules } from '@gamepark/rules-api'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { setShowSolution } from '../laser/laserSelection'
-import { getElements, useStockNavigation } from '../locators/PlayerStockLocator'
-import { canPlace } from '../material/Material'
+import { useStockNavigation } from '../locators/PlayerStockLocator'
+import { useSelectionFollowsMoves } from '../locators/stockSelection'
 
 /**
  * One sentence: what the player must do. The progress, the times and the solution are beside the player panels.
@@ -57,16 +57,14 @@ const SolvingHeader = ({ player }: { player: PlayerColor }) => {
   const now = useNow({ updateRate: 1000 })
   const giveUp = rules.customMove(CustomMoveType.GiveUp, player)
   const timeUp = getRemainingTime(rules, player, now) === 0
+  // Sent once: the header can be displayed after the time limit (the player comes back), and React runs the effects twice in development
+  const gaveUp = useRef(false)
   useEffect(() => {
-    if (timeUp) play(giveUp)
+    if (!timeUp || gaveUp.current) return
+    gaveUp.current = true
+    play(giveUp)
   }, [timeUp])
-  // An element is always selected while the stock is not empty: by default the top of the first pile
-  const stock = new PlayerPuzzleHelper(rules.game, player).stock
-  const firstPile = stock.selected().length ? undefined : getElements(rules, player).find(id => stock.id(id).length && canPlace(rules, player, id))
-  const firstPileTop = firstPile === undefined ? undefined : stock.id(firstPile).getIndexes().pop()
-  useEffect(() => {
-    if (firstPileTop !== undefined) play(rules.material(MaterialType.Mirror).index(firstPileTop).selectItem(), { local: true })
-  }, [firstPileTop])
+  useSelectionFollowsMoves(player)
   useStockNavigation(player)
   return <Trans i18nKey="header.solving" components={{ giveUp: <PlayMoveButton move={giveUp} confirmation={{ text: t('give-up.confirm') }} /> }} />
 }

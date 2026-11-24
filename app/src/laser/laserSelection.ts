@@ -3,7 +3,7 @@ import { PlayerColor } from '@gamepark/reflection/PlayerColor'
 import { Memory } from '@gamepark/reflection/rules/Memory'
 import { PlayerPuzzleHelper } from '@gamepark/reflection/rules/PlayerPuzzleHelper'
 import { usePlayerId, useRules } from '@gamepark/react-game'
-import { MaterialRules } from '@gamepark/rules-api'
+import { MaterialGame, MaterialRules } from '@gamepark/rules-api'
 import { useSyncExternalStore } from 'react'
 
 export type LaserSelection = { side: Side; index: number } | undefined
@@ -43,6 +43,14 @@ export const useShowSolution = () => useSyncExternalStore(subscribe, () => showS
  * The spectators only see the last round of the first player, at the end of the game.
  */
 export const getDisplayedRound = (rules: MaterialRules, player?: PlayerColor) => {
+  // Each clue, cell and laser asks for it at each render: computed once per state of the game.
+  // The states of the store are immutable, a new state is a new object.
+  // A single entry is enough: every caller asks for the round of the player at the table
+  if (cache?.game !== rules.game || cache.player !== player) cache = { game: rules.game, player, round: computeDisplayedRound(rules, player) }
+  return cache.round
+}
+
+const computeDisplayedRound = (rules: MaterialRules, player?: PlayerColor) => {
   if (!rules.isOver()) {
     if (player === undefined) return
     const helper = new PlayerPuzzleHelper(rules.game, player)
@@ -51,6 +59,8 @@ export const getDisplayedRound = (rules: MaterialRules, player?: PlayerColor) =>
   const view = getLastRound(rules, player)
   return new PlayerPuzzleHelper(rules.game, view.player).getRound(view.round)
 }
+
+let cache: { game: MaterialGame; player?: PlayerColor; round: ReturnType<typeof computeDisplayedRound> } | undefined
 
 /**
  * At the end of the game, the round on the table: the last round of the player, or of the first player for a spectator

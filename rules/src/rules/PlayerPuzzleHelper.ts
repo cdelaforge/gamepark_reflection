@@ -5,6 +5,7 @@ import { LocationType } from '../material/LocationType'
 import { MaterialType } from '../material/MaterialType'
 import { PlayerColor } from '../PlayerColor'
 import { Memory } from './Memory'
+import type { Lock } from './SolvePuzzleRule'
 
 /**
  * The current puzzle of a player and their grid. Shared by the rules and the user interface.
@@ -52,6 +53,13 @@ export class PlayerPuzzleHelper extends MaterialRulesPart<PlayerColor, MaterialT
 
   get stock() {
     return this.material(MaterialType.Mirror).location(LocationType.PlayerStock).player(this.player)
+  }
+
+  /**
+   * A cell locked by the player, see SolvePuzzleRule
+   */
+  isLocked(x: number, y: number) {
+    return !!this.remind<Lock[] | undefined>(Memory.Locks, this.player)?.some(lock => lock.x === x && lock.y === y)
   }
 
   get placedMirrors() {

@@ -22,7 +22,8 @@ export class ReflectionSetup extends MaterialGameSetup<PlayerColor, MaterialType
     const challenge = options.challenge ? challenges[options.challenge] : undefined
     const items = Math.max(options.items, challenge?.items ?? 0)
     const timeLimit = Math.min(options.timeLimit, challenge?.timeLimit ?? Infinity)
-    const rounds = challenge ? maxPuzzles(challenge.goal) : options.rounds!
+    // The rounds option only exists from 2 players, and a single player always plays a challenge: 1 round in case the platform ever omits both
+    const rounds = challenge ? maxPuzzles(challenge.goal) : (options.rounds ?? 1)
     this.memorize(Memory.GridSize, options.gridSize)
     this.memorize(Memory.TimeLimit, timeLimit)
     this.memorize(Memory.Rounds, rounds)
