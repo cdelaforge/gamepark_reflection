@@ -16,7 +16,8 @@ import { CELL, getGridSize } from './Layout'
  */
 class LaserLocator extends Locator {
   locationDescription = new LaserDescription()
-  coordinates = { x: 0, y: 0, z: 1 }
+  // Above the cells, under the elements of the grid (see PlayerGridLocator)
+  coordinates = { x: 0, y: 0, z: 0.05 }
 
   getLocations(context: MaterialContext) {
     if (!getDisplayedRound(context.rules, context.player)?.puzzle) return []

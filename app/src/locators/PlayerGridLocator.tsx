@@ -32,6 +32,11 @@ class PlayerGridLocator extends Locator {
     return cellCoordinates(location.x!, location.y!, getGridSize(context))
   }
 
+  // The elements are above the laser, which is above the cells (see LaserLocator)
+  getItemCoordinates(item: MaterialItem, context: ItemContext) {
+    return { ...super.getItemCoordinates(item, context), z: 0.1 }
+  }
+
   hide(item: MaterialItem, context: ItemContext) {
     return item.location.player !== context.player
   }

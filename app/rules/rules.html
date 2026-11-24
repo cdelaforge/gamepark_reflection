@@ -76,7 +76,7 @@
 
     .material {
       display: grid;
-      grid-template-columns: 108pt 1fr;
+      grid-template-columns: max-content 1fr;
       align-items: center;
       gap: 6pt 8pt;
     }
@@ -149,8 +149,17 @@
       <img class="tile" src="../src/images/square.svg" alt="">
       <img class="tile" src="../src/images/triangle-a.svg" alt="">
       <img class="tile" src="../src/images/triangle-b.svg" alt="">
+      <img class="tile" src="../src/images/triangle-c.svg" alt="">
+      <img class="tile" src="../src/images/triangle-d.svg" alt="">
     </div>
     <p>{{rules.material.special-shapes}}</p>
+    <div class="tiles">
+      <img class="tile" src="../src/images/absorbing-triangle-a.svg" alt="">
+      <img class="tile" src="../src/images/absorbing-triangle-b.svg" alt="">
+      <img class="tile" src="../src/images/absorbing-triangle-c.svg" alt="">
+      <img class="tile" src="../src/images/absorbing-triangle-d.svg" alt="">
+    </div>
+    <p>{{rules.material.absorbing-triangles}}</p>
     <div class="tiles"><img class="tile" src="../src/images/black-hole.svg" alt=""></div>
     <p>{{rules.material.black-holes}}</p>
     <div class="tiles"><img class="tile" src="../src/images/portal.svg" alt=""></div>

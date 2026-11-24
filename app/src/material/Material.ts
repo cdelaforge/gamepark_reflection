@@ -1,5 +1,5 @@
 import { css } from '@emotion/react'
-import { faLock, IconDefinition } from '@fortawesome/free-solid-svg-icons'
+import { IconDefinition } from '@fortawesome/free-solid-svg-icons'
 import { Element } from '@gamepark/reflection/material/Element'
 import { PlayerColor } from '@gamepark/reflection/PlayerColor'
 import { PlayerPuzzleHelper } from '@gamepark/reflection/rules/PlayerPuzzleHelper'
@@ -7,13 +7,21 @@ import { LocationType } from '@gamepark/reflection/material/LocationType'
 import { MaterialType } from '@gamepark/reflection/material/MaterialType'
 import { ItemContext, MaterialDescription, TokenDescription } from '@gamepark/react-game'
 import { isMoveItemType, MaterialGame, MaterialItem, MaterialMove, MaterialRules } from '@gamepark/rules-api'
+import absorbingTriangleA from '../images/absorbing-triangle-a.svg?no-inline'
+import absorbingTriangleB from '../images/absorbing-triangle-b.svg?no-inline'
+import absorbingTriangleC from '../images/absorbing-triangle-c.svg?no-inline'
+import absorbingTriangleD from '../images/absorbing-triangle-d.svg?no-inline'
 import backslash from '../images/backslash.svg?no-inline'
 import blackHole from '../images/black-hole.svg?no-inline'
 import horizontal from '../images/horizontal.svg?no-inline'
+// A taller shackle than the FontAwesome padlock, which looks like a plain box at the size of the cells
+import lockIcon from '../images/lock.svg?no-inline'
 import slash from '../images/slash.svg?no-inline'
 import square from '../images/square.svg?no-inline'
 import triangleA from '../images/triangle-a.svg?no-inline'
 import triangleB from '../images/triangle-b.svg?no-inline'
+import triangleC from '../images/triangle-c.svg?no-inline'
+import triangleD from '../images/triangle-d.svg?no-inline'
 import vertical from '../images/vertical.svg?no-inline'
 import { CELL } from '../locators/Layout'
 
@@ -25,7 +33,13 @@ export const elementImages: Record<number, string> = {
   [Element.Square]: square,
   [Element.BlackHole]: blackHole,
   [Element.TriangleA]: triangleA,
-  [Element.TriangleB]: triangleB
+  [Element.TriangleB]: triangleB,
+  [Element.TriangleC]: triangleC,
+  [Element.TriangleD]: triangleD,
+  [Element.AbsorbingTriangleA]: absorbingTriangleA,
+  [Element.AbsorbingTriangleB]: absorbingTriangleB,
+  [Element.AbsorbingTriangleC]: absorbingTriangleC,
+  [Element.AbsorbingTriangleD]: absorbingTriangleD
 }
 
 class MirrorDescription extends TokenDescription {
@@ -48,8 +62,10 @@ class MirrorDescription extends TokenDescription {
   }
 
   // A dragged element is slightly transparent. An element on a locked cell shows the padlock.
+  // On the grid, the cell gives the background and border: the laser, between the cell and the element, stays visible around it.
   getItemExtraCss(item: MaterialItem, context: ItemContext) {
-    return [noTransitionCss, context.isDragging && draggingCss, isOnLockedCell(item, context) && lockedCss]
+    const onGrid = item.location.type === LocationType.PlayerGrid
+    return [noTransitionCss, onGrid && noTileCss, context.isDragging && draggingCss, isOnLockedCell(item, context) && lockedCss]
   }
 
   // An element goes back to the stock without a pile id: the piles accept it, the framework must not add a pile for this location
@@ -115,8 +131,6 @@ const isOnLockedCell = ({ location }: MaterialItem, { rules }: ItemContext) =>
 export const iconUrl = ({ icon: [width, height, , , path] }: IconDefinition, color: string) =>
   `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><path fill="${color}" d="${path}"/></svg>`)}`
 
-const lockIcon = iconUrl(faLock, '#ffd700')
-
 /**
  * The padlock in the corner of a locked cell, over its element if any
  */
@@ -144,15 +158,17 @@ const noTransitionCss = css`
   }
 `
 
-// Only the element itself is dragged, without the background and border of its tile
-const draggingCss = css`
-  opacity: 0.7;
-
+// Only the element itself, without the background and border of its tile
+const noTileCss = css`
   && * {
     background-color: transparent;
     border-color: transparent;
   }
 `
+
+const draggingCss = [noTileCss, css`
+  opacity: 0.7;
+`]
 
 export const Material:Partial<Record<MaterialType, MaterialDescription>> = {
   [MaterialType.Mirror]: new MirrorDescription()

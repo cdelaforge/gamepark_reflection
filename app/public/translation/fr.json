@@ -43,6 +43,7 @@
   "rules.material": "Matériel",
   "rules.material.mirrors": "Des miroirs, qui reflètent les lasers.",
   "rules.material.special-shapes": "Selon les options, des miroirs de formes spéciales : carrés et triangles.",
+  "rules.material.absorbing-triangles": "Selon les options, des triangles absorbants : leurs deux côtés bordés de gris reflètent les lasers, leur diagonale les absorbe comme un trou noir.",
   "rules.material.black-holes": "Des trous noirs (selon les options), qui absorbent les lasers.",
   "rules.material.light-warps": "Des portails (selon les options) : deux portails sont déjà placés sur la grille. Un laser qui entre dans un portail ressort par l’autre.",
   "rules.clues": "Les indices",

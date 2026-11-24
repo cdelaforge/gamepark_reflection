@@ -43,6 +43,7 @@
   "rules.material": "Material",
   "rules.material.mirrors": "Mirrors, which reflect the lasers.",
   "rules.material.special-shapes": "Depending on the options, mirrors of special shapes: squares and triangles.",
+  "rules.material.absorbing-triangles": "Depending on the options, absorbing triangles: their two sides edged in grey reflect the lasers, their diagonal absorbs them like a black hole.",
   "rules.material.black-holes": "Black holes (depending on the options), which absorb the lasers.",
   "rules.material.light-warps": "Light warps (depending on the options): two light warps are already placed on the grid. A laser entering one warp comes out of the other.",
   "rules.clues": "The clues",

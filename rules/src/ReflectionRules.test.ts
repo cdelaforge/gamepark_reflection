@@ -21,7 +21,6 @@ import { PlayerColor } from './PlayerColor'
 import { CustomMoveType } from './rules/CustomMoveType'
 import { Memory } from './rules/Memory'
 import { PlayerPuzzleHelper } from './rules/PlayerPuzzleHelper'
-import { SpecialShapes } from './SpecialShapes'
 
 type Move = MaterialMove<PlayerColor, MaterialType, LocationType>
 
@@ -40,7 +39,9 @@ const newGame = (rounds = 1, challenge?: Challenge) => {
     items: 3,
     blackHoles: false,
     lightWarps: false,
-    specialShapes: SpecialShapes.None,
+    squares: false,
+    triangles: false,
+    absorbingTriangles: false,
     timeLimit: 10,
     rounds
   })

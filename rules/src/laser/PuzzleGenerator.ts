@@ -1,5 +1,4 @@
 import { Element } from '../material/Element'
-import { SpecialShapes } from '../SpecialShapes'
 import { Cell, Clues, createEmptyGrid, getClues, Grid } from './Laser'
 
 /**
@@ -12,7 +11,9 @@ export type PuzzleOptions = {
   items: number
   blackHoles: boolean
   lightWarps: boolean
-  specialShapes: SpecialShapes
+  squares: boolean
+  triangles: boolean
+  absorbingTriangles: boolean
 }
 
 export type GeneratedPuzzle = { puzzle: Puzzle; elements: Element[]; solution: Grid }
@@ -33,49 +34,45 @@ export function generatePuzzle(options: PuzzleOptions): GeneratedPuzzle {
   return { puzzle: { clues: getClues(solution), portals }, elements, solution }
 }
 
-function getRandomElements({ items, blackHoles, specialShapes }: PuzzleOptions): Element[] {
+function getRandomElements({ items, blackHoles, squares, triangles, absorbingTriangles }: PuzzleOptions): Element[] {
   // "quality" favors the diagonal mirrors, which make the puzzles more interesting
   for (;;) {
     let quality = 0
     const elements: Element[] = []
+    // At most 2 different triangles, and 2 different absorbing triangles, in a puzzle
+    const triangleTypes = pickTwo([Element.TriangleA, Element.TriangleB, Element.TriangleC, Element.TriangleD])
+    const absorbingTypes = pickTwo([Element.AbsorbingTriangleA, Element.AbsorbingTriangleB, Element.AbsorbingTriangleC, Element.AbsorbingTriangleD])
+    // Each type of special shape has the same chance: the square, and the 2 types of each family of triangles
+    const specialShapes = [...(squares ? [Element.Square] : []), ...(triangles ? triangleTypes : []), ...(absorbingTriangles ? absorbingTypes : [])]
+    // The triangles deflect the laser: they make the puzzles more interesting, the absorbing triangles do not
+    const addSpecialShape = () => {
+      const shape = specialShapes[randomInt(0, specialShapes.length - 1)]
+      if (triangleTypes.includes(shape)) quality++
+      elements.push(shape)
+    }
+    // More special shapes when the 3 families share them
+    const specialRange = squares && triangles && absorbingTriangles ? 30 : 20
     if (items > 5) {
       quality = 4
       elements.push(Element.Slash, Element.BackSlash, randomInt(0, 1) ? Element.Horizontal : Element.Vertical)
       if (blackHoles) elements.push(Element.BlackHole)
     }
-    if (items > 6 && specialShapes !== SpecialShapes.None) {
-      const shape = getRandomSpecialShape(specialShapes)
-      if (shape !== Element.Square) quality++
-      elements.push(shape)
-    }
+    if (items > 6 && specialShapes.length) addSpecialShape()
     while (elements.length < items) {
-      const r = randomInt(0, 209)
+      const r = randomInt(0, 189 + specialRange)
       if (r < 120) {
         quality += 2
         elements.push(r < 60 ? Element.Slash : Element.BackSlash)
       } else if (r < 180) {
         elements.push(r < 150 ? Element.Vertical : Element.Horizontal)
-      } else if (r < 200) {
-        if (specialShapes === SpecialShapes.None) continue
-        const shape = getRandomSpecialShape(specialShapes)
-        if (shape !== Element.Square) quality++
-        elements.push(shape)
+      } else if (r < 180 + specialRange) {
+        if (!specialShapes.length) continue
+        addSpecialShape()
       } else if (blackHoles) {
         elements.push(Element.BlackHole)
       }
     }
     if (quality > items) return elements
-  }
-}
-
-function getRandomSpecialShape(specialShapes: SpecialShapes): Element {
-  switch (specialShapes) {
-    case SpecialShapes.Squares:
-      return Element.Square
-    case SpecialShapes.Triangles:
-      return randomInt(0, 1) ? Element.TriangleB : Element.TriangleA
-    default:
-      return [Element.Square, Element.TriangleA, Element.TriangleB][randomInt(0, 2)]
   }
 }
 
@@ -111,6 +108,10 @@ function hasUselessElement(grid: Grid) {
       return useless
     })
   )
+}
+
+function pickTwo(elements: Element[]) {
+  return elements.sort(() => Math.random() - 0.5).slice(0, 2)
 }
 
 function randomInt(min: number, max: number) {

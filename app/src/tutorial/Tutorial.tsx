@@ -4,7 +4,6 @@ import { LocationType } from '@gamepark/reflection/material/LocationType'
 import { MaterialType } from '@gamepark/reflection/material/MaterialType'
 import { PlayerColor } from '@gamepark/reflection/PlayerColor'
 import { ReflectionOptions } from '@gamepark/reflection/ReflectionOptions'
-import { SpecialShapes } from '@gamepark/reflection/SpecialShapes'
 import { MaterialTutorial, TutorialStep } from '@gamepark/react-game'
 import { isMoveItemType, isRollItemType, Location, MaterialGame, MaterialMove } from '@gamepark/rules-api'
 import { tutorialSolution, TutorialSetup } from './TutorialSetup'
@@ -46,7 +45,9 @@ export class Tutorial extends MaterialTutorial<PlayerColor, MaterialType, Locati
     items: 5,
     blackHoles: true,
     lightWarps: false,
-    specialShapes: SpecialShapes.None,
+    squares: false,
+    triangles: false,
+    absorbingTriangles: false,
     // Plenty of time to read the tutorial
     timeLimit: 60,
     rounds: 1

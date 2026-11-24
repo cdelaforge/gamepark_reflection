@@ -12,7 +12,8 @@ import solved from '../images/rules/solved.png'
 import { elementImages } from '../material/Material'
 
 const mirrors = [Element.Slash, Element.BackSlash, Element.Vertical, Element.Horizontal]
-const specialShapes = [Element.Square, Element.TriangleA, Element.TriangleB]
+const specialShapes = [Element.Square, Element.TriangleA, Element.TriangleB, Element.TriangleC, Element.TriangleD]
+const absorbingTriangles = [Element.AbsorbingTriangleA, Element.AbsorbingTriangleB, Element.AbsorbingTriangleC, Element.AbsorbingTriangleD]
 
 /**
  * The rules of the game, opened from the question mark of the header
@@ -40,6 +41,14 @@ export const RulesHelp = () => {
           ))}
         </div>
         <p>{t('rules.material.special-shapes')}</p>
+      </div>
+      <div css={rowCss}>
+        <div>
+          {absorbingTriangles.map(id => (
+            <img key={id} src={elementImages[id]} alt="" css={elementCss} />
+          ))}
+        </div>
+        <p>{t('rules.material.absorbing-triangles')}</p>
       </div>
       <div css={rowCss}>
         <img src={elementImages[Element.BlackHole]} alt="" css={elementCss} />

@@ -1,7 +1,6 @@
 import { getEnumValues, OptionsSpecV2 } from '@gamepark/rules-api'
 import { Challenge } from './Challenge'
 import { PlayerColor } from './PlayerColor'
-import { SpecialShapes } from './SpecialShapes'
 
 /**
  * This is the options for each player in the game.
@@ -17,7 +16,9 @@ export type ReflectionOptions = {
   items: number
   blackHoles: boolean
   lightWarps: boolean
-  specialShapes: SpecialShapes
+  squares: boolean
+  triangles: boolean
+  absorbingTriangles: boolean
   timeLimit: number
   // Several players play a number of rounds, a single player plays a challenge
   rounds?: number
@@ -52,7 +53,9 @@ export const ReflectionOptionsSpecV2: OptionsSpecV2 = {
     items: { kind: 'enum', values: range(3, 30) },
     blackHoles: { kind: 'boolean' },
     lightWarps: { kind: 'boolean' },
-    specialShapes: { kind: 'enum', values: getEnumValues(SpecialShapes) },
+    squares: { kind: 'boolean' },
+    triangles: { kind: 'boolean' },
+    absorbingTriangles: { kind: 'boolean' },
     timeLimit: { kind: 'enum', values: [2, 5, 10, 15, 20, 25, 30, 60] },
     rounds: { kind: 'enum', playerCount: { min: 2 }, values: [1, 3, 5] },
     challenge: { kind: 'enum', playerCount: { max: 1 }, values: getEnumValues(Challenge) }

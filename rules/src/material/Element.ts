@@ -10,5 +10,12 @@ export enum Element {
   BlackHole,
   Portal,
   TriangleA,
-  TriangleB
+  TriangleB,
+  TriangleC,
+  TriangleD,
+  // The same orientations as the triangles: the 2 sides of the right angle return the laser, the diagonal absorbs it
+  AbsorbingTriangleA,
+  AbsorbingTriangleB,
+  AbsorbingTriangleC,
+  AbsorbingTriangleD
 }

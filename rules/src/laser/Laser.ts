@@ -43,8 +43,14 @@ const deflections = [
   [2, 3, 0, 1], // square
   [-1, -1, -1, -1], // black hole
   [0, 1, 2, 3], // portal
-  [2, 3, 1, 0], // triangle A
-  [3, 2, 0, 1] // triangle B
+  [2, 3, 1, 0], // triangle A: right angle bottom left
+  [3, 2, 0, 1], // triangle B: right angle top right
+  [2, 0, 3, 1], // triangle C: right angle bottom right
+  [1, 3, 0, 2], // triangle D: right angle top left
+  [2, 3, -1, -1], // absorbing triangle A
+  [-1, -1, 0, 1], // absorbing triangle B
+  [2, -1, -1, 1], // absorbing triangle C
+  [-1, 3, 0, -1] // absorbing triangle D
 ]
 const rowSteps = [-1, 0, 1, 0]
 const colSteps = [0, 1, 0, -1]
