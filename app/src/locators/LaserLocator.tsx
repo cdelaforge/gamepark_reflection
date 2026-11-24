@@ -44,20 +44,27 @@ function LaserContent() {
   const solution = showSolution ? getDisplayedRound(rules, player)?.solution : undefined
   return (
     <>
-      {solution && <SolutionGrid solution={solution} />}
+      {solution && <SolutionCells solution={solution} />}
       {selection && <LaserPath grid={grid} selection={selection} />}
+      {solution && <SolutionElements solution={solution} />}
     </>
   )
 }
 
-function SolutionGrid({ solution }: { solution: number[][] }) {
+// The cells of the solution, then the laser, then the elements: like on the player's grid, the laser passes under the elements
+function SolutionCells({ solution }: { solution: number[][] }) {
+  const size = solution.length
+  return solution.flatMap((cells, row) => cells.map((_, col) => <div key={`${row}-${col}`} css={[cellCss, positionCss(row, col, size)]} />))
+}
+
+function SolutionElements({ solution }: { solution: number[][] }) {
   const size = solution.length
   return solution.flatMap((cells, row) =>
-    cells.map((element, col) => (
-      <div key={`${row}-${col}`} css={[cellCss, positionCss(row, col, size)]}>
-        {element !== 0 && <img src={element === Element.Portal ? portal : elementImages[element]} alt="" css={fullSize} />}
-      </div>
-    ))
+    cells.flatMap((element, col) =>
+      element === 0
+        ? []
+        : [<img key={`${row}-${col}`} src={element === Element.Portal ? portal : elementImages[element]} alt="" css={[elementCss, positionCss(row, col, size)]} />]
+    )
   )
 }
 
@@ -104,9 +111,8 @@ const positionCss = (row: number, col: number, size: number) => css`
   height: ${100 / size}%;
 `
 
-const fullSize = css`
-  width: 100%;
-  height: 100%;
+const elementCss = css`
+  position: absolute;
 `
 
 const svgCss = css`

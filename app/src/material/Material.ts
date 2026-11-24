@@ -65,7 +65,7 @@ class MirrorDescription extends TokenDescription {
   // On the grid, the cell gives the background and border: the laser, between the cell and the element, stays visible around it.
   getItemExtraCss(item: MaterialItem, context: ItemContext) {
     const onGrid = item.location.type === LocationType.PlayerGrid
-    return [noTransitionCss, onGrid && noTileCss, context.isDragging && draggingCss, isOnLockedCell(item, context) && lockedCss]
+    return [noTransitionCss, onGrid && [noTileCss, underSolutionCss], context.isDragging && draggingCss, isOnLockedCell(item, context) && lockedCss]
   }
 
   // An element goes back to the stock without a pile id: the piles accept it, the framework must not add a pile for this location
@@ -163,6 +163,13 @@ const noTileCss = css`
   && * {
     background-color: transparent;
     border-color: transparent;
+  }
+`
+
+// The solution is drawn under the elements of the grid (see LaserLocator): they are hidden while it is on display
+const underSolutionCss = css`
+  body[data-show-solution] && {
+    visibility: hidden;
   }
 `
 

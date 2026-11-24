@@ -26,6 +26,8 @@ export const toggleLaser = (side: Side, index: number) => {
  */
 export const setShowSolution = (show: boolean) => {
   showSolution = show
+  // The elements of the grid are not rendered again when this changes: a CSS selector hides them (see Material)
+  document.body.toggleAttribute('data-show-solution', show)
   notify()
 }
 
